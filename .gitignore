@@ -1,0 +1,28 @@
+# 의존성
+node_modules/
+client/node_modules/
+
+# 빌드 산출물
+client/dist/
+
+# 런타임 상태 (DB / 업로드) — 서버가 자동 생성
+server/data.db
+server/data.db-*
+server/uploads/
+
+# 환경 변수
+.env
+.env.*
+*.local
+
+# 로그
+*.log
+
+# 에디터 / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Claude Code (로컬 전용, 공유 안 함)
+CLAUDE.md
+.claude/
