@@ -1,0 +1,1 @@
+{"root":["./server/auth.ts","./server/db.ts","./server/index.ts","./server/reset.ts","./server/routes/auth.ts","./server/routes/blocks.ts","./server/routes/bookmark.ts","./server/routes/pages.ts","./server/routes/search.ts","./server/routes/upload.ts"],"version":"5.9.3"}

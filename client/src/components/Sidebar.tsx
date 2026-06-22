@@ -23,6 +23,7 @@ import {
   RotateCcw,
   Search,
   X,
+  PanelLeftClose,
 } from 'lucide-react'
 import { useStore } from '../store'
 import type { Page } from '../types'
@@ -139,6 +140,8 @@ export function Sidebar() {
   const reorderPages = useStore((s) => s.reorderPages)
   const logout = useStore((s) => s.logout)
   const sidebarOpen = useStore((s) => s.sidebarOpen)
+  const sidebarCollapsed = useStore((s) => s.sidebarCollapsed)
+  const hideSidebar = useStore((s) => s.hideSidebar)
   const loadTrash = useStore((s) => s.loadTrash)
   const setSearchOpen = useStore((s) => s.setSearchOpen)
   const [trashOpen, setTrashOpen] = useState(false)
@@ -172,7 +175,11 @@ export function Sidebar() {
   }
 
   return (
-    <aside className={`sidebar${sidebarOpen ? ' open' : ''}`}>
+    <aside
+      className={`sidebar${sidebarOpen ? ' open' : ''}${
+        sidebarCollapsed ? ' collapsed' : ''
+      }`}
+    >
       <div className="sidebar-header">
         <span className="sidebar-title">My Workspace</span>
         <button
@@ -181,6 +188,9 @@ export function Sidebar() {
           onClick={() => setSearchOpen(true)}
         >
           <Search size={16} />
+        </button>
+        <button className="sidebar-new" title="사이드바 접기" onClick={hideSidebar}>
+          <PanelLeftClose size={16} />
         </button>
         <button
           className="sidebar-new"

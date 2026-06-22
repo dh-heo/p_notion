@@ -118,19 +118,19 @@ interface Props {
 }
 
 export function TableBlock({ content, onChange, editable }: Props) {
-  const cells = content.cells
+  // cells/columns가 없는 손상·구버전 데이터도 크래시 없이 렌더되도록 방어적으로 읽는다
+  const cells: string[][] = content.cells ?? []
 
-  // 구 데이터(columns 없음) 마이그레이션: 셀 폭만큼 text 열을 생성해 1회 영속화
+  // 마이그레이션/복구: cells 또는 columns가 비어 있으면 유효한 기본 표로 1회 영속화
   useEffect(() => {
-    if (!content.columns) {
-      const width = content.cells[0]?.length ?? 1
-      const columns: TableColumn[] = Array.from({ length: width }, () => ({
-        id: uid(),
-        name: '',
-        type: 'text',
-      }))
-      onChange({ ...content, columns })
-    }
+    if (content.cells && content.columns) return
+    const width = content.columns?.length ?? content.cells?.[0]?.length ?? 2
+    const columns: TableColumn[] =
+      content.columns ??
+      Array.from({ length: width }, () => ({ id: uid(), name: '', type: 'text' }))
+    const filledCells =
+      content.cells ?? [Array(width).fill(''), Array(width).fill('')]
+    onChange({ ...content, columns, cells: filledCells })
     // 마운트 시 1회만
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -138,7 +138,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
   // 마이그레이션 직전 한 프레임을 위한 폴백 (id는 effect가 곧 영속화)
   const columns: TableColumn[] =
     content.columns ??
-    (content.cells[0] ?? []).map((_, i) => ({
+    (cells[0] ?? []).map((_, i) => ({
       id: `c${i}`,
       name: '',
       type: 'text',

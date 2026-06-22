@@ -13,6 +13,14 @@ function debounceSave(id: string, fn: () => void, ms = 600) {
     fn()
   }, ms))
 }
+// 대기 중인 디바운스 저장 취소 — 변환 직후 옛 content 저장이 뒤늦게 덮어쓰지 않도록
+function cancelSave(id: string) {
+  const t = timers.get(id)
+  if (t) {
+    clearTimeout(t)
+    timers.delete(id)
+  }
+}
 
 function bySort(a: { sort_order: number }, b: { sort_order: number }) {
   return a.sort_order - b.sort_order
@@ -30,6 +38,11 @@ function loadLocked(): Record<string, boolean> {
     return {}
   }
 }
+
+// 넓은 화면에서 사이드바 접힘 상태 (localStorage 영속, 기본 펼침)
+const COLLAPSE_KEY = 'pnotion:sidebar-collapsed'
+// 좁은 화면 판정 — 좁으면 오버레이(sidebarOpen), 넓으면 인라인 접힘(sidebarCollapsed)으로 동작
+const isNarrow = () => window.matchMedia('(max-width: 720px)').matches
 
 let initStarted = false
 
@@ -50,6 +63,8 @@ interface AppState {
   lockedPages: Record<string, boolean>
   // 좁은 화면에서 사이드바 오버레이 열림 (데스크톱 CSS에선 무시됨)
   sidebarOpen: boolean
+  // 넓은 화면에서 사이드바 접힘 (좁은 화면 CSS에선 무시됨)
+  sidebarCollapsed: boolean
   // 검색 모달 열림 (Cmd+K / 사이드바 버튼)
   searchOpen: boolean
 
@@ -95,6 +110,9 @@ interface AppState {
   setFocus: (id: string | null, atStart?: boolean) => void
   toggleLock: (pageId: string) => void
   setSidebarOpen: (open: boolean) => void
+  // 화면 폭에 맞춰 사이드바를 보이거나(showSidebar) 숨긴다(hideSidebar)
+  showSidebar: () => void
+  hideSidebar: () => void
   setSearchOpen: (open: boolean) => void
 }
 
@@ -110,6 +128,7 @@ export const useStore = create<AppState>((set, get) => ({
   focusAtStart: false,
   lockedPages: loadLocked(),
   sidebarOpen: false,
+  sidebarCollapsed: localStorage.getItem(COLLAPSE_KEY) === 'true',
   searchOpen: false,
 
   checkAuth: async () => {
@@ -313,6 +332,8 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   convertBlock: async (id, type, content) => {
+    // 입력 중 예약된 옛 content 저장이 변환 결과를 덮어쓰지 않도록 먼저 취소
+    cancelSave(id)
     const c = content ?? defaultContent(type)
     set((s) => ({
       blocks: s.blocks.map((b) => (b.id === id ? { ...b, type, content: c } : b)),
@@ -386,5 +407,20 @@ export const useStore = create<AppState>((set, get) => ({
     }),
 
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
+
+  showSidebar: () => {
+    if (isNarrow()) set({ sidebarOpen: true })
+    else {
+      localStorage.setItem(COLLAPSE_KEY, 'false')
+      set({ sidebarCollapsed: false })
+    }
+  },
+  hideSidebar: () => {
+    if (isNarrow()) set({ sidebarOpen: false })
+    else {
+      localStorage.setItem(COLLAPSE_KEY, 'true')
+      set({ sidebarCollapsed: true })
+    }
+  },
   setSearchOpen: (open) => set({ searchOpen: open }),
 }))

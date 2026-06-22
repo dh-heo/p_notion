@@ -1,11 +1,9 @@
-import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Plus, GripVertical, Trash2 } from 'lucide-react'
 import { useStore } from '../store'
 import { RichText, isEmptyHtml } from './RichText'
 import { escapeHtml } from '../tableClipboard'
-import { SlashMenu } from './SlashMenu'
 import type { SlashChoice } from './SlashMenu'
 import { CodeBlock, getLastCodeLang } from './blocks/CodeBlock'
 import { ImageBlock } from './blocks/ImageBlock'
@@ -53,8 +51,6 @@ export function BlockRow({ block }: Props) {
   )
   const editable = !locked
 
-  const [menuRect, setMenuRect] = useState<DOMRect | null>(null)
-
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: block.id })
 
@@ -73,6 +69,7 @@ export function BlockRow({ block }: Props) {
   const textProps = {
     html,
     editable,
+    navId: id,
     shouldFocus: focusId === id,
     focusAtStart,
     onFocusConsumed: () => setFocus(null),
@@ -115,7 +112,7 @@ export function BlockRow({ block }: Props) {
       if (empty) deleteBlock(id)
       else mergeIntoPrev(id, h)
     },
-    onSlash: (rect: DOMRect) => setMenuRect(rect),
+    onSlashSelect: (choice: SlashChoice) => handleSlashSelect(choice),
     onMarkdown: (type: BlockType, level?: 1 | 2 | 3) => {
       if (type === 'heading') convertBlock(id, 'heading', { html: '', level: level ?? 1 })
       else if (type === 'divider') insertDivider()
@@ -150,7 +147,6 @@ export function BlockRow({ block }: Props) {
   }
 
   const handleSlashSelect = (choice: SlashChoice) => {
-    setMenuRect(null)
     if (choice.type === 'heading') {
       convertBlock(id, 'heading', { html: '', level: choice.level ?? 1 })
     } else if (choice.type === 'code') {
@@ -319,16 +315,6 @@ export function BlockRow({ block }: Props) {
         </div>
       )}
       <div className="block-body">{renderBlock()}</div>
-      {menuRect && (
-        <SlashMenu
-          rect={menuRect}
-          onSelect={handleSlashSelect}
-          onClose={() => {
-            setMenuRect(null)
-            setFocus(id)
-          }}
-        />
-      )}
     </div>
   )
 }

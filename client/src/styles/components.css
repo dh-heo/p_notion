@@ -1265,6 +1265,13 @@
 .sidebar-backdrop {
   display: none;
 }
+/* 넓은 화면: 사이드바를 접으면 숨기고, 다시 펼치는 플로팅 토글을 노출 */
+.sidebar.collapsed {
+  display: none;
+}
+.sidebar-toggle.collapsed {
+  display: flex;
+}
 
 /* 인용 블록 */
 .b-quote {
@@ -1779,6 +1786,10 @@ a[data-page-id]:hover {
   }
   .sidebar.open {
     transform: translateX(0);
+  }
+  /* 좁은 화면에선 '접힘'은 의미 없음 — 오버레이(open)로만 제어하므로 숨김 해제 */
+  .sidebar.collapsed {
+    display: block;
   }
   .sidebar-toggle {
     display: flex;

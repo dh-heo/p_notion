@@ -9,6 +9,8 @@ import type { BlockType, Page } from '../types'
 import { useStore } from '../store'
 import { parseClipboardGrid } from '../tableClipboard'
 import { MentionMenu } from './MentionMenu'
+import { SlashMenu, filterSlashChoices } from './SlashMenu'
+import type { SlashChoice } from './SlashMenu'
 
 // contentEditable 안의 링크 클릭 처리: 내부 페이지 멘션(data-page-id)은 해당 페이지로 이동,
 // 일반 링크는 새 탭으로 연다
@@ -105,6 +107,52 @@ function mentionContext():
   return { query, node: node as Text, start, offset }
 }
 
+// 화면 좌표(x,y)에 해당하는 캐럿 위치를 Range로 반환 (브라우저별 API 차이 흡수)
+function caretPointToRange(x: number, y: number): Range | null {
+  const doc = document as Document & {
+    caretPositionFromPoint?: (
+      x: number,
+      y: number
+    ) => { offsetNode: Node; offset: number } | null
+    caretRangeFromPoint?: (x: number, y: number) => Range | null
+  }
+  if (doc.caretPositionFromPoint) {
+    const p = doc.caretPositionFromPoint(x, y)
+    if (p) {
+      const r = document.createRange()
+      r.setStart(p.offsetNode, p.offset)
+      r.collapse(true)
+      return r
+    }
+  }
+  if (doc.caretRangeFromPoint) {
+    const r = doc.caretRangeFromPoint(x, y)
+    if (r) {
+      r.collapse(true)
+      return r
+    }
+  }
+  return null
+}
+
+// 현재 캐럿이 블록의 첫 줄/마지막 줄에 있는지와, 가로 위치(x)를 구한다
+function caretLineInfo(el: HTMLElement): { first: boolean; last: boolean; x: number } {
+  const er = el.getBoundingClientRect()
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return { first: true, last: true, x: er.left }
+  const cr = sel.getRangeAt(0).getBoundingClientRect()
+  // 빈 블록 등에서 collapsed range가 빈 사각형이면 단일 줄로 취급
+  if (cr.height === 0 && cr.top === 0 && cr.bottom === 0) {
+    return { first: true, last: true, x: er.left }
+  }
+  const lh = cr.height || 20
+  return {
+    first: cr.top - er.top < lh * 0.75,
+    last: er.bottom - cr.bottom < lh * 0.75,
+    x: cr.left,
+  }
+}
+
 function placeCaret(el: HTMLElement, atStart: boolean) {
   el.focus()
   const sel = window.getSelection()
@@ -120,10 +168,12 @@ interface Props {
   onInput: (html: string) => void
   onEnter?: (afterHtml: string, beforeEmpty: boolean) => void
   onBackspaceStart?: (html: string, empty: boolean) => void
-  onSlash?: (rect: DOMRect) => void
+  onSlashSelect?: (choice: SlashChoice) => void
   onMarkdown?: (type: BlockType, level?: 1 | 2 | 3) => void
   onIndent?: (dir: 1 | -1) => void
   onPasteGrid?: (grid: string[][]) => void
+  // 설정 시 contentEditable에 data-block-id로 부착돼 화살표 블록 간 이동 대상이 된다
+  navId?: string
   placeholder?: string
   className?: string
   editable?: boolean
@@ -137,10 +187,11 @@ export function RichText({
   onInput,
   onEnter,
   onBackspaceStart,
-  onSlash,
+  onSlashSelect,
   onMarkdown,
   onIndent,
   onPasteGrid,
+  navId,
   placeholder,
   className,
   editable = true,
@@ -154,6 +205,10 @@ export function RichText({
     null
   )
   const [mentionIdx, setMentionIdx] = useState(0)
+  const [slash, setSlash] = useState<{ query: string; rect: DOMRect } | null>(null)
+  const [slashIdx, setSlashIdx] = useState(0)
+
+  const slashChoices = slash ? filterSlashChoices(slash.query) : []
 
   const mq = mention?.query.toLowerCase() ?? ''
   const cands = mention
@@ -186,6 +241,50 @@ export function RichText({
     sel?.addRange(after)
     setMention(null)
     onInput(clean(el.innerHTML))
+  }
+
+  // 슬래시 메뉴에서 블록 종류 선택: 입력했던 '/질의' 텍스트를 DOM에서 지우고 변환을 위임.
+  // onInput('')은 호출하지 않는다 — 디바운스 저장이 변환 결과(content)를 뒤늦게 덮어쓰기 때문.
+  // 실제 content는 convertBlock이 즉시 교체하며, 대기 중 저장은 convertBlock이 취소한다.
+  const pickSlash = (choice: SlashChoice) => {
+    if (ref.current) ref.current.innerHTML = ''
+    setSlash(null)
+    onSlashSelect?.(choice)
+  }
+
+  // 화살표로 이웃 텍스트 블록(data-block-id가 붙은 RichText)으로 캐럿을 이동한다.
+  // 표/코드/이미지 등 비텍스트 블록은 data-block-id가 없어 자연스럽게 건너뛴다.
+  const moveToSibling = (
+    dir: -1 | 1,
+    x: number | null,
+    collapseTo: 'start' | 'end'
+  ): boolean => {
+    const el = ref.current
+    if (!el || !navId) return false
+    const nodes = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-block-id]')
+    )
+    const target = nodes[nodes.indexOf(el) + dir]
+    if (!target) return false
+    target.focus()
+    const sel = window.getSelection()
+    if (!sel) return true
+    let range: Range | null = null
+    if (x != null) {
+      const tr = target.getBoundingClientRect()
+      const cx = Math.max(tr.left + 1, Math.min(x, tr.right - 1))
+      // 위로(-1) 가면 대상의 마지막 줄, 아래로(+1) 가면 첫 줄로 진입
+      const y = dir === -1 ? tr.bottom - 6 : tr.top + 6
+      range = caretPointToRange(cx, y)
+    }
+    if (!range) {
+      range = document.createRange()
+      range.selectNodeContents(target)
+      range.collapse(collapseTo === 'start')
+    }
+    sel.removeAllRanges()
+    sel.addRange(range)
+    return true
   }
 
   // 외부 html과 DOM 동기화 (편집 중이 아닐 때만)
@@ -237,6 +336,30 @@ export function RichText({
       }
     }
 
+    // 슬래시 메뉴가 열려 있으면 방향키/Enter/Esc를 메뉴 조작에 사용 (끝에서 멈춤, 순환 없음)
+    if (slash) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSlashIdx((i) => Math.min(i + 1, slashChoices.length - 1))
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSlashIdx((i) => Math.max(i - 1, 0))
+        return
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        if (slashChoices[slashIdx]) pickSlash(slashChoices[slashIdx])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setSlash(null)
+        return
+      }
+    }
+
     // 포맷 단축키: ⌘/Ctrl+B/I/U, ⌘/Ctrl+K(링크). 링크는 선택 영역이 있을 때만 동작
     if ((e.metaKey || e.ctrlKey) && !e.altKey) {
       const k = e.key.toLowerCase()
@@ -266,6 +389,33 @@ export function RichText({
     if (e.key === 'Tab' && onIndent) {
       e.preventDefault()
       onIndent(e.shiftKey ? -1 : 1)
+      return
+    }
+
+    // 화살표로 블록 경계를 넘어 이웃 블록으로 이동 (수정자 없는 단순 화살표만)
+    if (
+      navId &&
+      !e.shiftKey &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey &&
+      (e.key === 'ArrowUp' ||
+        e.key === 'ArrowDown' ||
+        e.key === 'ArrowLeft' ||
+        e.key === 'ArrowRight')
+    ) {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        const info = caretLineInfo(el)
+        if (e.key === 'ArrowUp' && info.first) {
+          if (moveToSibling(-1, info.x, 'end')) e.preventDefault()
+        } else if (e.key === 'ArrowDown' && info.last) {
+          if (moveToSibling(1, info.x, 'start')) e.preventDefault()
+        }
+      } else if (e.key === 'ArrowLeft' && caretAtStart(el)) {
+        if (moveToSibling(-1, null, 'end')) e.preventDefault()
+      } else if (e.key === 'ArrowRight' && caretAtEnd(el)) {
+        if (moveToSibling(1, null, 'start')) e.preventDefault()
+      }
       return
     }
 
@@ -313,9 +463,18 @@ export function RichText({
       onMarkdown('divider')
       return
     }
-    if (onSlash && el.textContent === '/') {
-      const rect = el.getBoundingClientRect()
-      onSlash(rect)
+    // 슬래시 메뉴: 블록 전체가 '/질의' 형태일 때 열고 질의로 필터링한다
+    const slashMatch = onSlashSelect ? /^\/(.*)$/.exec(el.textContent ?? '') : null
+    if (slashMatch) {
+      const sel = window.getSelection()
+      const rect =
+        sel && sel.rangeCount > 0
+          ? sel.getRangeAt(0).getBoundingClientRect()
+          : el.getBoundingClientRect()
+      setSlash({ query: slashMatch[1], rect })
+      setSlashIdx(0)
+    } else if (slash) {
+      setSlash(null)
     }
     // 페이지 멘션 자동완성 ('[[' 감지)
     const ctx = mentionContext()
@@ -351,10 +510,13 @@ export function RichText({
         contentEditable={editable}
         suppressContentEditableWarning
         data-placeholder={placeholder}
+        data-block-id={navId}
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         onClick={handleEditableLinkClick}
+        // 메뉴 항목 클릭은 mousedown+preventDefault라 blur가 나지 않으므로, blur 시 슬래시 메뉴를 닫는다
+        onBlur={() => slash && setSlash(null)}
       />
       {mention && (
         <MentionMenu
@@ -363,6 +525,15 @@ export function RichText({
           active={mentionIdx}
           onHover={setMentionIdx}
           onPick={pickMention}
+        />
+      )}
+      {slash && (
+        <SlashMenu
+          rect={slash.rect}
+          choices={slashChoices}
+          active={slashIdx}
+          onHover={setSlashIdx}
+          onPick={pickSlash}
         />
       )}
     </>

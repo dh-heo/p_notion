@@ -13,6 +13,8 @@ function App() {
   const checkAuth = useStore((s) => s.checkAuth)
   const sidebarOpen = useStore((s) => s.sidebarOpen)
   const setSidebarOpen = useStore((s) => s.setSidebarOpen)
+  const sidebarCollapsed = useStore((s) => s.sidebarCollapsed)
+  const showSidebar = useStore((s) => s.showSidebar)
   const pageTitle = useStore(
     (s) => s.pages.find((p) => p.id === s.currentPageId)?.title
   )
@@ -50,9 +52,9 @@ function App() {
   return (
     <div className="app">
       <button
-        className="sidebar-toggle"
+        className={`sidebar-toggle${sidebarCollapsed ? ' collapsed' : ''}`}
         title="사이드바 열기"
-        onClick={() => setSidebarOpen(true)}
+        onClick={showSidebar}
       >
         <Menu size={20} />
       </button>
