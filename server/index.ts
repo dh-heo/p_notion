@@ -6,6 +6,7 @@ import { blocks } from "./routes/blocks.js";
 import { search } from "./routes/search.js";
 import { bookmark } from "./routes/bookmark.js";
 import { upload, UPLOAD_DIR } from "./routes/upload.js";
+import { ingest } from "./routes/ingest.js";
 import { auth } from "./routes/auth.js";
 import { requireAuth } from "./auth.js";
 
@@ -26,6 +27,7 @@ app.use("/api", blocks);
 app.use("/api", search);
 app.use("/api", bookmark);
 app.use("/api", upload);
+app.use("/api", ingest);
 
 // 업로드된 파일도 인증된 사용자만 읽을 수 있게 정적 서빙
 app.use("/uploads", requireAuth, express.static(UPLOAD_DIR));

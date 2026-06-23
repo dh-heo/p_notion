@@ -89,9 +89,21 @@ export function isAuthed(req: Request): boolean {
   return verifyToken(readCookie(req, COOKIE));
 }
 
-// ----- 미들웨어: 미인증이면 401 -----
+// ----- API 토큰 (자동화/에이전트용): 환경변수 PNOTION_API_TOKEN과 일치하면 통과 -----
+function hasValidApiToken(req: Request): boolean {
+  const expected = process.env.PNOTION_API_TOKEN;
+  if (!expected) return false;
+  const header = req.headers.authorization;
+  if (!header) return false;
+  const got = header.replace(/^Bearer\s+/i, "");
+  const a = Buffer.from(got);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+// ----- 미들웨어: 미인증이면 401 (세션 쿠키 또는 Bearer API 토큰) -----
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (isAuthed(req)) {
+  if (isAuthed(req) || hasValidApiToken(req)) {
     next();
     return;
   }
