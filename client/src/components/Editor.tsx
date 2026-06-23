@@ -8,6 +8,7 @@ import {
   isTableFile,
   parseDelimitedFile,
 } from '../tableClipboard'
+import { uid } from '../uid'
 import { BlockList } from './BlockList'
 import { EmojiPicker } from './EmojiPicker'
 
@@ -57,7 +58,7 @@ export function Editor() {
           const grid = parseDelimitedFile(file.name, await file.text())
           if (grid) {
             const columns = grid[0].map(() => ({
-              id: crypto.randomUUID(),
+              id: uid(),
               name: '',
               type: 'text' as const,
             }))

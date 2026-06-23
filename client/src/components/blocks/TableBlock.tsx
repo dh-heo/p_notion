@@ -39,6 +39,7 @@ import {
   gridToHtmlTable,
 } from '../../tableClipboard'
 import type { TableColumn, TableContent, TableOption } from '../../types'
+import { uid } from '../../uid'
 import type { ReactNode, MouseEvent as ReactMouseEvent, ClipboardEvent as ReactClipboardEvent } from 'react'
 
 // 범주 칩 팔레트 (따뜻한 톤, InlineToolbar 하이라이트 색과 결)
@@ -52,8 +53,6 @@ const CHIP_COLORS = [
   { bg: '#e6e1d6', text: '#5a5448' }, // 회색
 ]
 const chip = (i: number) => CHIP_COLORS[i % CHIP_COLORS.length]
-
-const uid = () => crypto.randomUUID()
 
 function stripHtml(html: string): string {
   const d = document.createElement('div')

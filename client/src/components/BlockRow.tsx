@@ -4,6 +4,7 @@ import { Plus, GripVertical, Trash2 } from 'lucide-react'
 import { useStore } from '../store'
 import { RichText, isEmptyHtml } from './RichText'
 import { escapeHtml } from '../tableClipboard'
+import { uid } from '../uid'
 import type { SlashChoice } from './SlashMenu'
 import { CodeBlock, getLastCodeLang } from './blocks/CodeBlock'
 import { ImageBlock } from './blocks/ImageBlock'
@@ -120,7 +121,7 @@ export function BlockRow({ block }: Props) {
     },
     onPasteGrid: (grid: string[][]) => {
       const columns = grid[0].map(() => ({
-        id: crypto.randomUUID(),
+        id: uid(),
         name: '',
         type: 'text' as const,
       }))

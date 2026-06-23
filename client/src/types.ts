@@ -1,3 +1,5 @@
+import { uid } from './uid'
+
 export type BlockType =
   | 'paragraph'
   | 'heading'
@@ -157,8 +159,8 @@ export function defaultContent(type: BlockType): BlockContent {
     case 'table':
       return {
         columns: [
-          { id: crypto.randomUUID(), name: '', type: 'text' },
-          { id: crypto.randomUUID(), name: '', type: 'text' },
+          { id: uid(), name: '', type: 'text' },
+          { id: uid(), name: '', type: 'text' },
         ],
         cells: [
           ['', ''],
