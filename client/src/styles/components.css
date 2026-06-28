@@ -342,8 +342,18 @@
   display: flex;
   align-items: flex-start;
 }
+/* 블록 리스트 아래 클릭하면 새 문단을 만드는 빈 영역 */
+.block-list-tail {
+  min-height: 40px;
+  cursor: text;
+}
 .block-row.dragging {
   opacity: 0.45;
+}
+/* 드래그 다중선택 강조 */
+.block-row.selected .block-body {
+  background: var(--accent-soft);
+  border-radius: var(--radius);
 }
 .block-gutter {
   position: absolute;
@@ -414,17 +424,23 @@
 }
 
 .b-bullet,
+.b-numbered,
 .b-todo {
   display: flex;
   align-items: flex-start;
   gap: 8px;
 }
-.b-bullet-dot {
+.b-bullet-dot,
+.b-num-dot {
   color: var(--text-soft);
   line-height: 1.65;
   user-select: none;
 }
+.b-num-dot {
+  min-width: 1.2em;
+}
 .b-bullet .b-text,
+.b-numbered .b-text,
 .b-todo .b-text {
   flex: 1;
 }

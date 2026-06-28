@@ -67,6 +67,8 @@ interface AppState {
   sidebarCollapsed: boolean
   // 검색 모달 열림 (Cmd+K / 사이드바 버튼)
   searchOpen: boolean
+  // 드래그로 다중 선택된 블록 id들
+  selectedBlockIds: string[]
 
   checkAuth: () => Promise<void>
   login: (password: string) => Promise<void>
@@ -101,9 +103,16 @@ interface AppState {
     type: BlockType,
     content?: BlockContent
   ) => Promise<string | undefined>
+  insertBlocksAfter: (
+    afterId: string,
+    items: Array<{ type: BlockType; content: BlockContent }>
+  ) => Promise<void>
   updateContent: (id: string, content: BlockContent) => void
   convertBlock: (id: string, type: BlockType, content?: BlockContent) => Promise<void>
   deleteBlock: (id: string, focusPrev?: boolean) => Promise<void>
+  deleteBlocks: (ids: string[]) => Promise<void>
+  setSelectedBlocks: (ids: string[]) => void
+  clearSelection: () => void
   mergeIntoPrev: (id: string, html: string) => Promise<void>
   reorderBlocks: (orderedIds: string[]) => Promise<void>
 
@@ -130,6 +139,7 @@ export const useStore = create<AppState>((set, get) => ({
   sidebarOpen: false,
   sidebarCollapsed: localStorage.getItem(COLLAPSE_KEY) === 'true',
   searchOpen: false,
+  selectedBlockIds: [],
 
   checkAuth: async () => {
     try {
@@ -185,7 +195,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   selectPage: async (id) => {
     localStorage.setItem(LAST_PAGE_KEY, id)
-    set({ currentPageId: id, blocks: [], backlinks: [], sidebarOpen: false })
+    set({
+      currentPageId: id,
+      blocks: [],
+      backlinks: [],
+      sidebarOpen: false,
+      selectedBlockIds: [],
+    })
     api.getBacklinks(id).then((backlinks) => {
       // 늦게 도착한 응답이 다른 페이지를 덮어쓰지 않게 확인
       if (get().currentPageId === id) set({ backlinks })
@@ -324,6 +340,33 @@ export const useStore = create<AppState>((set, get) => ({
     return created.id
   },
 
+  insertBlocksAfter: async (afterId, items) => {
+    const { blocks, currentPageId } = get()
+    if (!currentPageId || items.length === 0) return
+    const idx = blocks.findIndex((b) => b.id === afterId)
+    const a = blocks[idx]
+    const next = blocks[idx + 1]
+    const start = a ? a.sort_order : 0
+    const end = next ? next.sort_order : start + items.length + 1
+    // a와 next 사이에 분수 인덱싱으로 균등 배치 (한 번에 여러 블록 삽입)
+    const step = (end - start) / (items.length + 1)
+    const created: Block[] = []
+    for (let i = 0; i < items.length; i++) {
+      const c = await api.createBlock({
+        page_id: currentPageId,
+        type: items[i].type,
+        content: items[i].content,
+        sort_order: start + step * (i + 1),
+      })
+      created.push(c)
+    }
+    set((s) => ({
+      blocks: [...s.blocks, ...created].sort(bySort),
+      focusId: created[created.length - 1].id,
+      focusAtStart: false,
+    }))
+  },
+
   updateContent: (id, content) => {
     set((s) => ({
       blocks: s.blocks.map((b) => (b.id === id ? { ...b, content } : b)),
@@ -355,6 +398,29 @@ export const useStore = create<AppState>((set, get) => ({
     }))
     await api.deleteBlock(id)
   },
+
+  deleteBlocks: async (ids) => {
+    const idset = new Set(ids)
+    const { blocks, currentPageId } = get()
+    if (!currentPageId || ids.length === 0) return
+    const remaining = blocks.filter((b) => !idset.has(b.id))
+    set({ blocks: remaining, selectedBlockIds: [] })
+    await Promise.all(ids.map((id) => api.deleteBlock(id)))
+    // 전부 지워졌으면 입력을 이어갈 수 있도록 빈 문단 1개를 만든다
+    if (remaining.length === 0) {
+      const b = await api.createBlock({
+        page_id: currentPageId,
+        type: 'paragraph',
+        content: { html: '' },
+        sort_order: 1,
+      })
+      set({ blocks: [b], focusId: b.id, focusAtStart: true })
+    }
+  },
+
+  setSelectedBlocks: (ids) => set({ selectedBlockIds: ids }),
+  clearSelection: () =>
+    set((s) => (s.selectedBlockIds.length ? { selectedBlockIds: [] } : s)),
 
   mergeIntoPrev: async (id, html) => {
     const { blocks } = get()

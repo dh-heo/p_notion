@@ -16,6 +16,7 @@ import { BookmarkBlock } from './blocks/BookmarkBlock'
 import { EquationBlock } from './blocks/EquationBlock'
 import type {
   Block,
+  BlockContent,
   BlockType,
   BookmarkContent,
   BulletContent,
@@ -35,12 +36,17 @@ const BULLET_MARKERS = ['•', '◦', '▪']
 
 interface Props {
   block: Block
+  // numbered 블록일 때 표시할 항목 번호 (BlockList에서 계산)
+  ordinal?: number
+  // 블록 다중선택(드래그) 시 강조
+  selected?: boolean
 }
 
-export function BlockRow({ block }: Props) {
+export function BlockRow({ block, ordinal, selected }: Props) {
   const updateContent = useStore((s) => s.updateContent)
   const convertBlock = useStore((s) => s.convertBlock)
   const addBlockAfter = useStore((s) => s.addBlockAfter)
+  const insertBlocksAfter = useStore((s) => s.insertBlocksAfter)
   const deleteBlock = useStore((s) => s.deleteBlock)
   const mergeIntoPrev = useStore((s) => s.mergeIntoPrev)
   const setFocus = useStore((s) => s.setFocus)
@@ -78,31 +84,37 @@ export function BlockRow({ block }: Props) {
       updateContent(id, { ...block.content, html: next }),
     onEnter: (after: string, beforeEmpty: boolean) => {
       const t = block.type
-      if ((t === 'bullet' || t === 'todo') && beforeEmpty && after === '') {
-        // 들여쓴 빈 bullet은 문단 변환 대신 한 단계 내어쓰기
-        if (t === 'bullet' && bulletIndent > 0) setIndent(-1)
+      if (
+        (t === 'bullet' || t === 'todo' || t === 'numbered') &&
+        beforeEmpty &&
+        after === ''
+      ) {
+        // 들여쓴 빈 목록은 문단 변환 대신 한 단계 내어쓰기
+        if ((t === 'bullet' || t === 'numbered') && bulletIndent > 0) setIndent(-1)
         else convertBlock(id, 'paragraph', { html: '' })
         return
       }
-      const newType: BlockType = t === 'bullet' || t === 'todo' ? t : 'paragraph'
+      const newType: BlockType =
+        t === 'bullet' || t === 'todo' || t === 'numbered' ? t : 'paragraph'
       const content =
         newType === 'todo'
           ? { html: after, checked: false }
-          : newType === 'bullet'
+          : newType === 'bullet' || newType === 'numbered'
             ? { html: after, indent: bulletIndent }
             : { html: after }
       addBlockAfter(id, newType, content)
     },
     onBackspaceStart: (h: string, empty: boolean) => {
       const t = block.type
-      // 들여쓴 bullet은 문단 변환 전에 먼저 내어쓰기
-      if (t === 'bullet' && bulletIndent > 0) {
+      // 들여쓴 목록은 문단 변환 전에 먼저 내어쓰기
+      if ((t === 'bullet' || t === 'numbered') && bulletIndent > 0) {
         setIndent(-1)
         return
       }
       if (
         t === 'heading' ||
         t === 'bullet' ||
+        t === 'numbered' ||
         t === 'todo' ||
         t === 'quote' ||
         t === 'callout'
@@ -118,6 +130,15 @@ export function BlockRow({ block }: Props) {
       if (type === 'heading') convertBlock(id, 'heading', { html: '', level: level ?? 1 })
       else if (type === 'divider') insertDivider()
       else convertBlock(id, type)
+    },
+    onPasteBlocks: (items: Array<{ type: BlockType; content: BlockContent }>) => {
+      // 빈 문단에 붙여넣으면 첫 항목으로 교체하고 나머지는 아래에 삽입
+      if (block.type === 'paragraph' && isEmptyHtml(html) && items.length) {
+        convertBlock(id, items[0].type, items[0].content)
+        if (items.length > 1) insertBlocksAfter(id, items.slice(1))
+      } else {
+        insertBlocksAfter(id, items)
+      }
     },
     onPasteGrid: (grid: string[][]) => {
       const columns = grid[0].map(() => ({
@@ -180,6 +201,18 @@ export function BlockRow({ block }: Props) {
             <span className="b-bullet-dot">
               {BULLET_MARKERS[bulletIndent % BULLET_MARKERS.length]}
             </span>
+            <RichText
+              {...textProps}
+              onIndent={editable ? setIndent : undefined}
+              className="b-text"
+              placeholder="목록"
+            />
+          </div>
+        )
+      case 'numbered':
+        return (
+          <div className="b-numbered" style={{ marginLeft: bulletIndent * 24 }}>
+            <span className="b-num-dot">{ordinal ?? 1}.</span>
             <RichText
               {...textProps}
               onIndent={editable ? setIndent : undefined}
@@ -290,7 +323,8 @@ export function BlockRow({ block }: Props) {
   return (
     <div
       ref={setNodeRef}
-      className={`block-row${isDragging ? ' dragging' : ''}`}
+      data-row-id={block.id}
+      className={`block-row${isDragging ? ' dragging' : ''}${selected ? ' selected' : ''}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       {editable && (

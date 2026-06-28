@@ -5,7 +5,7 @@ import type {
   ClipboardEvent as ReactClipboardEvent,
 } from 'react'
 import DOMPurify from 'dompurify'
-import type { BlockType, Page } from '../types'
+import type { BlockContent, BlockType, Page } from '../types'
 import { useStore } from '../store'
 import { parseClipboardGrid } from '../tableClipboard'
 import { MentionMenu } from './MentionMenu'
@@ -54,6 +54,28 @@ const MD: Record<string, { type: BlockType; level?: 1 | 2 | 3 }> = {
   '[ ]': { type: 'todo' },
 }
 
+// 캐럿 바로 앞의 '->' / '<-'를 화살표(→ / ←)로 치환 (Notion 식). 치환했으면 true
+function replaceArrowsAtCaret(): boolean {
+  const sel = window.getSelection()
+  if (!sel || !sel.isCollapsed || sel.rangeCount === 0) return false
+  const node = sel.anchorNode
+  if (!node || node.nodeType !== Node.TEXT_NODE) return false
+  const offset = sel.anchorOffset
+  const text = node.textContent ?? ''
+  const before = text.slice(0, offset)
+  let arrow = ''
+  if (before.endsWith('->')) arrow = '→'
+  else if (before.endsWith('<-')) arrow = '←'
+  if (!arrow) return false
+  node.textContent = text.slice(0, offset - 2) + arrow + text.slice(offset)
+  const r = document.createRange()
+  r.setStart(node, offset - 1)
+  r.collapse(true)
+  sel.removeAllRanges()
+  sel.addRange(r)
+  return true
+}
+
 function caretAtStart(el: HTMLElement): boolean {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0) return false
@@ -89,7 +111,7 @@ function htmlAfterCaret(el: HTMLElement): string {
 }
 
 // 캐럿 바로 앞에서 닫히지 않은 '[[질의'를 찾는다 (페이지 멘션 자동완성용)
-function mentionContext():
+export function mentionContext():
   | { query: string; node: Text; start: number; offset: number }
   | null {
   const sel = window.getSelection()
@@ -172,6 +194,8 @@ interface Props {
   onMarkdown?: (type: BlockType, level?: 1 | 2 | 3) => void
   onIndent?: (dir: 1 | -1) => void
   onPasteGrid?: (grid: string[][]) => void
+  // 앱 내부에서 복사한 블록들을 붙여넣을 때 (text/html 마커 감지 시)
+  onPasteBlocks?: (items: Array<{ type: BlockType; content: BlockContent }>) => void
   // 설정 시 contentEditable에 data-block-id로 부착돼 화살표 블록 간 이동 대상이 된다
   navId?: string
   placeholder?: string
@@ -191,6 +215,7 @@ export function RichText({
   onMarkdown,
   onIndent,
   onPasteGrid,
+  onPasteBlocks,
   navId,
   placeholder,
   className,
@@ -429,6 +454,14 @@ export function RichText({
         onMarkdown(md.type, md.level)
         return
       }
+      // '1.' / '1)' 등 숫자 프리픽스 → 번호 매기기 목록
+      if (/^\d+[.)]$/.test(text)) {
+        e.preventDefault()
+        el.innerHTML = ''
+        onInput('')
+        onMarkdown('numbered')
+        return
+      }
     }
 
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -456,6 +489,8 @@ export function RichText({
 
   const handleInput = () => {
     const el = ref.current!
+    // '->' / '<-' → 화살표 치환 (치환 시 caret/DOM이 바뀌므로 이후 직렬화에 반영됨)
+    replaceArrowsAtCaret()
     // 다른 문자 없이 '----'(minus 4개)만 입력되면 가로 구분선으로 변환
     if (onMarkdown && el.textContent === '----') {
       el.innerHTML = ''
@@ -494,6 +529,28 @@ export function RichText({
 
   // 스프레드시트 영역을 붙여넣으면 표 블록으로 전환/삽입 (그 외는 기본 붙여넣기)
   const handlePaste = (e: ReactClipboardEvent<HTMLDivElement>) => {
+    // 앱 내부에서 복사한 블록(text/html 마커)을 먼저 처리 → 블록 구조 복원
+    if (onPasteBlocks) {
+      const html = e.clipboardData.getData('text/html')
+      if (html.includes('data-pnotion-blocks')) {
+        const el = new DOMParser()
+          .parseFromString(html, 'text/html')
+          .querySelector('[data-pnotion-blocks]')
+        const raw = el?.getAttribute('data-pnotion-blocks')
+        if (raw) {
+          try {
+            const items = JSON.parse(decodeURIComponent(raw))
+            if (Array.isArray(items) && items.length) {
+              e.preventDefault()
+              onPasteBlocks(items)
+              return
+            }
+          } catch {
+            /* 파싱 실패 시 기본 붙여넣기로 폴백 */
+          }
+        }
+      }
+    }
     if (!onPasteGrid) return
     const grid = parseClipboardGrid(e.clipboardData)
     if (grid) {

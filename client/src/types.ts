@@ -4,6 +4,7 @@ export type BlockType =
   | 'paragraph'
   | 'heading'
   | 'bullet'
+  | 'numbered'
   | 'todo'
   | 'code'
   | 'image'
@@ -40,6 +41,11 @@ export interface HeadingContent {
 export interface BulletContent {
   html: string
   // 들여쓰기 단계 (0 = 최상위). 계층적 목록 표현에 사용
+  indent?: number
+}
+export interface NumberedContent {
+  html: string
+  // bullet과 동일한 들여쓰기 단계 (번호는 같은 단계끼리 매겨짐)
   indent?: number
 }
 export interface TodoContent {
@@ -110,6 +116,7 @@ export type BlockContent =
   | ParagraphContent
   | HeadingContent
   | BulletContent
+  | NumberedContent
   | TodoContent
   | CodeContent
   | ImageContent
