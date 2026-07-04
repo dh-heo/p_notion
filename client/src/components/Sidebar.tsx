@@ -50,11 +50,10 @@ function buildTree(pages: Page[]): TreeNode[] {
   return roots
 }
 
-// 계층(깊이)별로 살짝 다른 색의 왼쪽 바로 강조해 단계 구분을 돕는다 (최상위는 바 없음)
-const DEPTH_COLORS = ['#b9603a', '#5b7553', '#3f6184', '#6b5b8a', '#b0392e']
+// 최상위(루트) 페이지에만 왼쪽 색 바를 붙여 최상위 계층을 구분한다 (하위는 바 없음)
+const ROOT_BAR_COLOR = '#b9603a'
 function depthColor(depth: number): string | undefined {
-  if (depth <= 0) return undefined
-  return DEPTH_COLORS[(depth - 1) % DEPTH_COLORS.length]
+  return depth === 0 ? ROOT_BAR_COLOR : undefined
 }
 
 function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
