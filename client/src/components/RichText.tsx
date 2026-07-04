@@ -97,6 +97,17 @@ function caretAtEnd(el: HTMLElement): boolean {
   return post.toString().length === 0
 }
 
+// 블록 시작부터 캐럿까지의 평문 (행 맨 앞의 '/' 슬래시·마크다운 프리픽스 감지에 사용)
+function textBeforeCaret(el: HTMLElement): string {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return ''
+  const r = sel.getRangeAt(0)
+  const pre = r.cloneRange()
+  pre.selectNodeContents(el)
+  pre.setEnd(r.endContainer, r.endOffset)
+  return pre.toString()
+}
+
 function htmlAfterCaret(el: HTMLElement): string {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0) return ''
@@ -190,8 +201,9 @@ interface Props {
   onInput: (html: string) => void
   onEnter?: (afterHtml: string, beforeEmpty: boolean) => void
   onBackspaceStart?: (html: string, empty: boolean) => void
-  onSlashSelect?: (choice: SlashChoice) => void
-  onMarkdown?: (type: BlockType, level?: 1 | 2 | 3) => void
+  // 두 번째 인자는 슬래시 토큰 앞에 남아 있던 기존 텍스트(이미 작성된 행에서 맨 앞 '/' 사용 시)
+  onSlashSelect?: (choice: SlashChoice, html: string) => void
+  onMarkdown?: (type: BlockType, level?: 1 | 2 | 3, html?: string) => void
   onIndent?: (dir: 1 | -1) => void
   onPasteGrid?: (grid: string[][]) => void
   // 앱 내부에서 복사한 블록들을 붙여넣을 때 (text/html 마커 감지 시)
@@ -268,13 +280,29 @@ export function RichText({
     onInput(clean(el.innerHTML))
   }
 
-  // 슬래시 메뉴에서 블록 종류 선택: 입력했던 '/질의' 텍스트를 DOM에서 지우고 변환을 위임.
+  // 캐럿 앞의 프리픽스('/질의' 또는 '- ' 같은 마크다운 토큰)만 DOM에서 지우고 남은 HTML을 돌려준다.
+  // 편집 중엔 외부 html 동기화가 막혀 있어(포커스 가드) 프리픽스를 직접 지워야 화면에서 사라진다.
+  const consumePrefix = (): string => {
+    const el = ref.current
+    if (!el) return ''
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) {
+      const caret = sel.getRangeAt(0)
+      const del = document.createRange()
+      del.setStart(el, 0)
+      del.setEnd(caret.endContainer, caret.endOffset)
+      del.deleteContents()
+    }
+    return clean(el.innerHTML)
+  }
+
+  // 슬래시 메뉴에서 블록 종류 선택: '/질의' 토큰만 지우고 뒤에 남은 텍스트와 함께 변환을 위임.
   // onInput('')은 호출하지 않는다 — 디바운스 저장이 변환 결과(content)를 뒤늦게 덮어쓰기 때문.
   // 실제 content는 convertBlock이 즉시 교체하며, 대기 중 저장은 convertBlock이 취소한다.
   const pickSlash = (choice: SlashChoice) => {
-    if (ref.current) ref.current.innerHTML = ''
+    const remaining = consumePrefix()
     setSlash(null)
-    onSlashSelect?.(choice)
+    onSlashSelect?.(choice, remaining)
   }
 
   // 화살표로 이웃 텍스트 블록(data-block-id가 붙은 RichText)으로 캐럿을 이동한다.
@@ -444,22 +472,21 @@ export function RichText({
       return
     }
 
-    if (e.key === ' ' && onMarkdown && caretAtEnd(el)) {
-      const text = (el.textContent ?? '').trim()
-      const md = MD[text]
+    // 캐럿 앞이 정확히 마크다운 프리픽스면 블록 변환 (행 맨 앞이면 뒤에 기존 텍스트가 있어도 동작).
+    // 프리픽스만 지우고 나머지 텍스트는 보존한다.
+    if (e.key === ' ' && onMarkdown) {
+      const sel = window.getSelection()
+      const before = sel && sel.isCollapsed ? textBeforeCaret(el) : ''
+      const md = MD[before]
       if (md) {
         e.preventDefault()
-        el.innerHTML = ''
-        onInput('')
-        onMarkdown(md.type, md.level)
+        onMarkdown(md.type, md.level, consumePrefix())
         return
       }
       // '1.' / '1)' 등 숫자 프리픽스 → 번호 매기기 목록
-      if (/^\d+[.)]$/.test(text)) {
+      if (/^\d+[.)]$/.test(before)) {
         e.preventDefault()
-        el.innerHTML = ''
-        onInput('')
-        onMarkdown('numbered')
+        onMarkdown('numbered', undefined, consumePrefix())
         return
       }
     }
@@ -498,8 +525,9 @@ export function RichText({
       onMarkdown('divider')
       return
     }
-    // 슬래시 메뉴: 블록 전체가 '/질의' 형태일 때 열고 질의로 필터링한다
-    const slashMatch = onSlashSelect ? /^\/(.*)$/.exec(el.textContent ?? '') : null
+    // 슬래시 메뉴: 캐럿 앞이 '/질의'(행 맨 앞의 슬래시)면 열고 질의로 필터링한다.
+    // 캐럿 뒤에 기존 텍스트가 있어도 되므로 이미 작성된 행에서도 맨 앞 '/'로 메뉴가 열린다.
+    const slashMatch = onSlashSelect ? /^\/(\S*)$/.exec(textBeforeCaret(el)) : null
     if (slashMatch) {
       const sel = window.getSelection()
       const rect =

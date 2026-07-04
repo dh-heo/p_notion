@@ -1094,6 +1094,35 @@
   align-self: center;
 }
 
+/* 여러 행 선택 시 뜨는 불릿/번호 변환 툴바 */
+.block-select-toolbar {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+.block-select-toolbar button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 9px;
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  border-radius: 4px;
+  font-size: 13px;
+}
+.block-select-toolbar button:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
 /* 색상 팔레트 */
 .color-pop {
   position: absolute;

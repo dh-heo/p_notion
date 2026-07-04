@@ -109,6 +109,8 @@ interface AppState {
   ) => Promise<void>
   updateContent: (id: string, content: BlockContent) => void
   convertBlock: (id: string, type: BlockType, content?: BlockContent) => Promise<void>
+  // 다중선택된 텍스트 블록들을 한 번에 불릿/번호 목록으로 변환 (각 블록의 html은 보존)
+  convertBlocks: (ids: string[], type: 'bullet' | 'numbered') => Promise<void>
   deleteBlock: (id: string, focusPrev?: boolean) => Promise<void>
   deleteBlocks: (ids: string[]) => Promise<void>
   setSelectedBlocks: (ids: string[]) => void
@@ -384,6 +386,33 @@ export const useStore = create<AppState>((set, get) => ({
       focusAtStart: false,
     }))
     await api.updateBlock(id, { type, content: c })
+  },
+
+  convertBlocks: async (ids, type) => {
+    const idset = new Set(ids)
+    const { blocks } = get()
+    // html을 가진 텍스트 계열 블록만 대상 (표/코드/이미지 등은 그대로 둔다)
+    const TEXT = new Set(['paragraph', 'heading', 'bullet', 'numbered', 'todo', 'quote', 'callout'])
+    const targets = blocks.filter((b) => idset.has(b.id) && TEXT.has(b.type))
+    if (targets.length === 0) {
+      set({ selectedBlockIds: [] })
+      return
+    }
+    // 입력 중 예약된 옛 content 저장이 변환 결과를 덮어쓰지 않도록 먼저 취소
+    targets.forEach((b) => cancelSave(b.id))
+    const contentOf = (b: Block): BlockContent => ({
+      html: (b.content as { html?: string }).html ?? '',
+      indent: 0,
+    })
+    set((s) => ({
+      blocks: s.blocks.map((b) =>
+        idset.has(b.id) && TEXT.has(b.type) ? { ...b, type, content: contentOf(b) } : b
+      ),
+      selectedBlockIds: [],
+    }))
+    await Promise.all(
+      targets.map((b) => api.updateBlock(b.id, { type, content: contentOf(b) }))
+    )
   },
 
   deleteBlock: async (id, focusPrev = true) => {

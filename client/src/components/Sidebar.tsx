@@ -50,6 +50,13 @@ function buildTree(pages: Page[]): TreeNode[] {
   return roots
 }
 
+// 계층(깊이)별로 살짝 다른 색의 왼쪽 바로 강조해 단계 구분을 돕는다 (최상위는 바 없음)
+const DEPTH_COLORS = ['#b9603a', '#5b7553', '#3f6184', '#6b5b8a', '#b0392e']
+function depthColor(depth: number): string | undefined {
+  if (depth <= 0) return undefined
+  return DEPTH_COLORS[(depth - 1) % DEPTH_COLORS.length]
+}
+
 function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
   const currentPageId = useStore((s) => s.currentPageId)
   const selectPage = useStore((s) => s.selectPage)
@@ -68,7 +75,10 @@ function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
         className={`tree-row${currentPageId === node.id ? ' active' : ''}${
           isDragging ? ' dragging' : ''
         }`}
-        style={{ paddingLeft: 8 + depth * 16 }}
+        style={{
+          paddingLeft: 8 + depth * 16,
+          boxShadow: depthColor(depth) ? `inset 3px 0 0 ${depthColor(depth)}` : undefined,
+        }}
         onClick={() => selectPage(node.id)}
         {...attributes}
         {...listeners}

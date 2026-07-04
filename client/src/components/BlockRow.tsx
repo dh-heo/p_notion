@@ -34,6 +34,10 @@ import type {
 // 들여쓰기 단계별 불릿 마커 (3단계 순환)
 const BULLET_MARKERS = ['•', '◦', '▪']
 
+// 슬래시 변환 시 기존 텍스트(html)를 그대로 보존해도 되는 블록 종류.
+// 표/코드/이미지 등은 content 형태가 달라 html을 넣으면 렌더가 깨지므로 제외한다.
+const HTML_KEEP_TYPES = new Set<BlockType>(['paragraph', 'quote', 'callout'])
+
 interface Props {
   block: Block
   // numbered 블록일 때 표시할 항목 번호 (BlockList에서 계산)
@@ -125,11 +129,15 @@ export function BlockRow({ block, ordinal, selected }: Props) {
       if (empty) deleteBlock(id)
       else mergeIntoPrev(id, h)
     },
-    onSlashSelect: (choice: SlashChoice) => handleSlashSelect(choice),
-    onMarkdown: (type: BlockType, level?: 1 | 2 | 3) => {
-      if (type === 'heading') convertBlock(id, 'heading', { html: '', level: level ?? 1 })
+    onSlashSelect: (choice: SlashChoice, keepHtml: string) =>
+      handleSlashSelect(choice, keepHtml),
+    onMarkdown: (type: BlockType, level?: 1 | 2 | 3, keepHtml = '') => {
+      if (type === 'heading') convertBlock(id, 'heading', { html: keepHtml, level: level ?? 1 })
       else if (type === 'divider') insertDivider()
-      else convertBlock(id, type)
+      else if (type === 'todo') convertBlock(id, 'todo', { html: keepHtml, checked: false })
+      else if (type === 'bullet' || type === 'numbered')
+        convertBlock(id, type, { html: keepHtml, indent: 0 })
+      else convertBlock(id, type, { html: keepHtml })
     },
     onPasteBlocks: (items: Array<{ type: BlockType; content: BlockContent }>) => {
       // 빈 문단에 붙여넣으면 첫 항목으로 교체하고 나머지는 아래에 삽입
@@ -168,16 +176,17 @@ export function BlockRow({ block, ordinal, selected }: Props) {
     addBlockAfter(id, 'paragraph')
   }
 
-  const handleSlashSelect = (choice: SlashChoice) => {
-    if (choice.type === 'heading') {
-      convertBlock(id, 'heading', { html: '', level: choice.level ?? 1 })
-    } else if (choice.type === 'code') {
-      convertBlock(id, 'code', { code: '', language: getLastCodeLang() })
-    } else if (choice.type === 'divider') {
-      insertDivider()
-    } else {
-      convertBlock(id, choice.type)
-    }
+  // keepHtml: 이미 작성된 행에서 맨 앞에 '/'를 쳐 슬래시 메뉴를 연 경우, 슬래시 뒤에 남아 있던 텍스트.
+  // 텍스트 계열 블록은 이를 보존하고, 그 외(표/코드/이미지 등)는 defaultContent로 변환한다.
+  const handleSlashSelect = (choice: SlashChoice, keepHtml = '') => {
+    const t = choice.type
+    if (t === 'heading') convertBlock(id, 'heading', { html: keepHtml, level: choice.level ?? 1 })
+    else if (t === 'code') convertBlock(id, 'code', { code: '', language: getLastCodeLang() })
+    else if (t === 'divider') insertDivider()
+    else if (t === 'todo') convertBlock(id, 'todo', { html: keepHtml, checked: false })
+    else if (t === 'bullet' || t === 'numbered') convertBlock(id, t, { html: keepHtml, indent: 0 })
+    else if (HTML_KEEP_TYPES.has(t)) convertBlock(id, t, { html: keepHtml })
+    else convertBlock(id, t)
   }
 
   const renderBlock = () => {

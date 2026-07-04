@@ -4,6 +4,7 @@ import { useStore } from './store'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
 import { InlineToolbar } from './components/InlineToolbar'
+import { BlockSelectionToolbar } from './components/BlockSelectionToolbar'
 import { SearchModal } from './components/SearchModal'
 import { Login } from './components/Login'
 import './styles/components.css'
@@ -65,6 +66,7 @@ function App() {
       />
       <Editor />
       <InlineToolbar />
+      <BlockSelectionToolbar />
       {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
     </div>
   )
