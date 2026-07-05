@@ -51,6 +51,17 @@ const TEXT_BLOCK_TYPES = new Set<BlockType>([
   'callout',
 ])
 
+// 캐럿(텍스트 입력)이 아예 없는 블록. 이 블록에 포커스가 있을 때 Enter를 누르면
+// (= 입력 중이 아닌 상태) 아래에 빈 문단을 만든다. 표/코드/토글은 자체 편집기가 있어 제외.
+const CARETLESS_TYPES = new Set<BlockType>([
+  'image',
+  'file',
+  'divider',
+  'bookmark',
+  'youtube',
+  'equation',
+])
+
 interface Props {
   block: Block
   // numbered 블록일 때 표시할 항목 번호 (BlockList에서 계산)
@@ -375,7 +386,25 @@ export function BlockRow({ block, ordinal, selected }: Props) {
           )}
         </div>
       )}
-      <div className="block-body">{renderBlock()}</div>
+      <div
+        className="block-body"
+        // 캐럿 없는 블록은 포커스 가능하게 하고, 그 위에서 Enter → 아래 빈 문단.
+        // 캡션/URL 입력 등 내부 요소에 포커스가 있을 땐(타깃이 다름) 무시한다.
+        tabIndex={editable && CARETLESS_TYPES.has(block.type) ? 0 : undefined}
+        onKeyDown={
+          editable && CARETLESS_TYPES.has(block.type)
+            ? (e) => {
+                if (e.target !== e.currentTarget) return
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  addBlockAfter(id, 'paragraph')
+                }
+              }
+            : undefined
+        }
+      >
+        {renderBlock()}
+      </div>
     </div>
   )
 }

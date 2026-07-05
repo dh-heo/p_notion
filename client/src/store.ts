@@ -26,6 +26,18 @@ function bySort(a: { sort_order: number }, b: { sort_order: number }) {
   return a.sort_order - b.sort_order
 }
 
+// 캐럿(텍스트 입력)이 있는 블록 종류 — 이 유형으로의 변환엔 끝 빈 문단을 붙이지 않는다
+const TEXT_TYPES = new Set<BlockType>([
+  'paragraph', 'heading', 'bullet', 'numbered', 'todo', 'quote', 'callout',
+])
+
+// 끝에 자동 유지할 "빈 문단" 판정 (RichText.isEmptyHtml와 동일 규칙, 순환 import 회피용 로컬)
+function isEmptyParaBlock(b: Block): boolean {
+  if (b.type !== 'paragraph') return false
+  const html = (b.content as { html?: string }).html ?? ''
+  return html.replace(/<br\s*\/?>/gi, '').replace(/&nbsp;/gi, '').trim() === ''
+}
+
 // 마지막으로 보던 페이지 (localStorage 영속, 재접속 시 복원)
 const LAST_PAGE_KEY = 'pnotion:last-page'
 
@@ -106,6 +118,9 @@ interface AppState {
     afterId: string,
     items: Array<{ type: BlockType; content: BlockContent }>
   ) => Promise<void>
+  // 마지막 블록이 빈 문단이 아니면(예: 이미지/표로 끝남) 끝에 빈 문단 하나를 붙여
+  // 항상 이어서 입력할 자리를 남긴다. 블록이 생성/변환/로드되는 경로에서 호출한다.
+  ensureTrailingEmpty: () => Promise<void>
   updateContent: (id: string, content: BlockContent) => void
   convertBlock: (id: string, type: BlockType, content?: BlockContent) => Promise<void>
   // 다중선택된 텍스트 블록들을 한 번에 불릿/번호 목록으로 변환 (각 블록의 html은 보존)
@@ -219,6 +234,8 @@ export const useStore = create<AppState>((set, get) => ({
       blocks = [b]
     }
     set({ blocks: blocks.sort(bySort) })
+    // 이미지/표 등으로 끝나는 페이지엔 입력 자리를 위해 끝에 빈 문단을 보장
+    await get().ensureTrailingEmpty()
   },
 
   addPage: async (parentId) => {
@@ -359,6 +376,29 @@ export const useStore = create<AppState>((set, get) => ({
       focusId: created[created.length - 1].id,
       focusAtStart: false,
     }))
+    // 표 등 비-텍스트 블록을 붙여넣어 끝났다면 끝에 빈 문단을 보장
+    await get().ensureTrailingEmpty()
+  },
+
+  ensureTrailingEmpty: async () => {
+    const { blocks, currentPageId, lockedPages } = get()
+    // 잠긴(읽기 전용) 페이지는 건드리지 않는다
+    if (!currentPageId || lockedPages[currentPageId]) return
+    if (blocks.length === 0) return // 빈 페이지는 selectPage/deleteBlocks가 처리
+    const last = blocks[blocks.length - 1]
+    if (isEmptyParaBlock(last)) return // 이미 끝이 빈 문단
+    const created = await api.createBlock({
+      page_id: currentPageId,
+      type: 'paragraph',
+      content: { html: '' },
+      sort_order: last.sort_order + 1,
+    })
+    // 그 사이 다른 페이지로 넘어갔으면 반영하지 않는다
+    set((s) =>
+      s.currentPageId === currentPageId
+        ? { blocks: [...s.blocks, created].sort(bySort) }
+        : s
+    )
   },
 
   updateContent: (id, content) => {
@@ -378,6 +418,9 @@ export const useStore = create<AppState>((set, get) => ({
       focusAtStart: false,
     }))
     await api.updateBlock(id, { type, content: c })
+    // 마지막 블록을 이미지/표 등 비-텍스트로 바꿨다면 끝에 빈 문단을 보장.
+    // 텍스트 변환(불릿/제목 등)엔 붙이지 않고, divider는 자체적으로 뒤에 문단을 만든다.
+    if (!TEXT_TYPES.has(type) && type !== 'divider') await get().ensureTrailingEmpty()
   },
 
   convertBlocks: async (ids, type) => {

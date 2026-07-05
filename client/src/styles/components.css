@@ -406,6 +406,15 @@
   min-width: 0;
   padding: 3px 0;
 }
+/* 캐럿 없는 블록(이미지/구분선 등)에 키보드 포커스가 갔을 때만 표시 — Enter로 아래 문단 추가 */
+.block-body:focus {
+  outline: none;
+}
+.block-body:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
 
 /* ===== Text blocks ===== */
 .b-paragraph,

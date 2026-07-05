@@ -23,6 +23,7 @@ export function Editor() {
   const backlinks = useStore((s) => s.backlinks)
   const selectPage = useStore((s) => s.selectPage)
   const addBlockAtEnd = useStore((s) => s.addBlockAtEnd)
+  const ensureTrailingEmpty = useStore((s) => s.ensureTrailingEmpty)
   const toggleLock = useStore((s) => s.toggleLock)
   const locked = useStore(
     (s) => !!(s.currentPageId && s.lockedPages[s.currentPageId])
@@ -75,6 +76,8 @@ export function Editor() {
         console.error('파일 업로드 실패:', file.name, err)
       }
     }
+    // 드롭한 파일들이 이미지/파일 블록으로 끝났으면 끝에 빈 문단을 보장
+    await ensureTrailingEmpty()
   }
 
   if (!currentPageId || !page) {
