@@ -38,6 +38,19 @@ const BULLET_MARKERS = ['•', '◦', '▪']
 // 표/코드/이미지 등은 content 형태가 달라 html을 넣으면 렌더가 깨지므로 제외한다.
 const HTML_KEEP_TYPES = new Set<BlockType>(['paragraph', 'quote', 'callout'])
 
+// 캐럿이 있어 Enter로 아래 블록을 만들고 Backspace로 지울 수 있는 텍스트 계열 블록.
+// 이 블록들은 gutter의 "+"/삭제가 키보드와 중복이라 드래그 핸들만 노출한다.
+// 그 외(표/코드/이미지/구분선/토글 등)는 캐럿 진입점이 없어 "+"/삭제 버튼을 함께 노출한다.
+const TEXT_BLOCK_TYPES = new Set<BlockType>([
+  'paragraph',
+  'heading',
+  'bullet',
+  'numbered',
+  'todo',
+  'quote',
+  'callout',
+])
+
 interface Props {
   block: Block
   // numbered 블록일 때 표시할 항목 번호 (BlockList에서 계산)
@@ -338,13 +351,15 @@ export function BlockRow({ block, ordinal, selected }: Props) {
     >
       {editable && (
         <div className="block-gutter">
-          <button
-            className="gutter-btn"
-            title="아래에 블록 추가"
-            onClick={() => addBlockAfter(id)}
-          >
-            <Plus size={16} />
-          </button>
+          {!TEXT_BLOCK_TYPES.has(block.type) && (
+            <button
+              className="gutter-btn"
+              title="아래에 블록 추가"
+              onClick={() => addBlockAfter(id)}
+            >
+              <Plus size={16} />
+            </button>
+          )}
           <button
             className="gutter-btn handle"
             title="드래그하여 이동"
@@ -353,9 +368,11 @@ export function BlockRow({ block, ordinal, selected }: Props) {
           >
             <GripVertical size={16} />
           </button>
-          <button className="gutter-btn" title="블록 삭제" onClick={handleDelete}>
-            <Trash2 size={16} />
-          </button>
+          {!TEXT_BLOCK_TYPES.has(block.type) && (
+            <button className="gutter-btn" title="블록 삭제" onClick={handleDelete}>
+              <Trash2 size={16} />
+            </button>
+          )}
         </div>
       )}
       <div className="block-body">{renderBlock()}</div>

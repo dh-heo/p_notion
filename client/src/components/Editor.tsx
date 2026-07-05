@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type { DragEvent as ReactDragEvent } from 'react'
-import { Lock, LockOpen, ImagePlus, Smile, X } from 'lucide-react'
+import { Lock, LockOpen, Smile, X } from 'lucide-react'
 import { useStore } from '../store'
 import { api } from '../api'
 import {
@@ -10,7 +10,8 @@ import {
 } from '../tableClipboard'
 import { uid } from '../uid'
 import { BlockList } from './BlockList'
-import { EmojiPicker } from './EmojiPicker'
+import { IconPicker } from './IconPicker'
+import { PageIcon } from './PageIcon'
 
 export function Editor() {
   const currentPageId = useStore((s) => s.currentPageId)
@@ -19,7 +20,6 @@ export function Editor() {
   )
   const renamePage = useStore((s) => s.renamePage)
   const setPageIcon = useStore((s) => s.setPageIcon)
-  const setPageCover = useStore((s) => s.setPageCover)
   const backlinks = useStore((s) => s.backlinks)
   const selectPage = useStore((s) => s.selectPage)
   const addBlockAtEnd = useStore((s) => s.addBlockAtEnd)
@@ -29,19 +29,6 @@ export function Editor() {
   )
   const [fileOver, setFileOver] = useState(false)
   const [iconOpen, setIconOpen] = useState(false)
-  const coverInputRef = useRef<HTMLInputElement>(null)
-
-  const pickCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = '' // 같은 파일 다시 선택 가능하도록 초기화
-    if (!file || !page) return
-    try {
-      const { src } = await api.uploadImage(file)
-      setPageCover(page.id, src)
-    } catch (err) {
-      console.error('커버 업로드 실패:', err)
-    }
-  }
 
   const isFileDrag = (e: ReactDragEvent) =>
     Array.from(e.dataTransfer.types).includes('Files')
@@ -113,26 +100,6 @@ export function Editor() {
         }}
         onDrop={handleDrop}
       >
-        {page.cover && (
-          <div className="page-cover">
-            <img src={page.cover} alt="" />
-            {!locked && (
-              <div className="cover-actions">
-                <button onClick={() => coverInputRef.current?.click()}>
-                  변경
-                </button>
-                <button onClick={() => setPageCover(page.id, null)}>제거</button>
-              </div>
-            )}
-          </div>
-        )}
-        <input
-          type="file"
-          accept="image/*"
-          ref={coverInputRef}
-          hidden
-          onChange={pickCover}
-        />
         <div className="editor-toolbar">
           <button
             className={`lock-toggle${locked ? ' locked' : ''}`}
@@ -142,14 +109,6 @@ export function Editor() {
             {locked ? <Lock size={14} /> : <LockOpen size={14} />}
             {locked ? '잠금됨' : '편집 가능'}
           </button>
-          {!locked && !page.cover && (
-            <button
-              className="page-meta-add"
-              onClick={() => coverInputRef.current?.click()}
-            >
-              <ImagePlus size={14} /> 커버 추가
-            </button>
-          )}
           {!locked && !page.icon && (
             <button
               className="page-meta-add"
@@ -167,7 +126,7 @@ export function Editor() {
               onClick={() => !locked && setIconOpen((v) => !v)}
               title={locked ? undefined : '아이콘 변경'}
             >
-              {page.icon}
+              <PageIcon icon={page.icon} size={60} />
             </button>
             {!locked && (
               <button
@@ -181,10 +140,10 @@ export function Editor() {
           </div>
         )}
         {iconOpen && !locked && (
-          <EmojiPicker
+          <IconPicker
             hasIcon={!!page.icon}
-            onPick={(emoji) => {
-              setPageIcon(page.id, emoji)
+            onPick={(value) => {
+              setPageIcon(page.id, value)
               setIconOpen(false)
             }}
             onRemove={() => {
@@ -211,7 +170,9 @@ export function Editor() {
                 className="backlink-item"
                 onClick={() => selectPage(b.pageId)}
               >
-                <span className="backlink-icon">{b.icon ?? '📄'}</span>
+                <span className="backlink-icon">
+                  {b.icon ? <PageIcon icon={b.icon} size={16} /> : '📄'}
+                </span>
                 <span className="backlink-text">
                   <span className="backlink-title">{b.title || '제목 없음'}</span>
                   {b.snippet && (

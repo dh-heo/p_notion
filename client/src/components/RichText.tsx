@@ -9,6 +9,7 @@ import type { BlockContent, BlockType, Page } from '../types'
 import { useStore } from '../store'
 import { parseClipboardGrid } from '../tableClipboard'
 import { MentionMenu } from './MentionMenu'
+import { isImageIcon } from './PageIcon'
 import { SlashMenu, filterSlashChoices } from './SlashMenu'
 import type { SlashChoice } from './SlashMenu'
 
@@ -266,7 +267,8 @@ export function RichText({
     const a = document.createElement('a')
     a.setAttribute('data-page-id', page.id)
     a.textContent =
-      (page.icon ? page.icon + ' ' : '') + (page.title || '제목 없음')
+      (page.icon && !isImageIcon(page.icon) ? page.icon + ' ' : '') +
+      (page.title || '제목 없음')
     range.insertNode(a)
     const space = document.createTextNode(' ')
     a.after(space)

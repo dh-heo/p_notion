@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { PageIcon } from './PageIcon'
 import type { Page } from '../types'
 
 // '[[' 페이지 멘션 자동완성 메뉴 (포커스를 뺏지 않는 표시 전용 — 키보드는 RichText가 처리)
@@ -46,7 +47,9 @@ export function MentionMenu({
             }}
             onMouseEnter={() => onHover(i)}
           >
-            <span className="mention-item-icon">{p.icon ?? '📄'}</span>
+            <span className="mention-item-icon">
+              {p.icon ? <PageIcon icon={p.icon} size={16} /> : '📄'}
+            </span>
             <span className="mention-item-title">{p.title || '제목 없음'}</span>
           </button>
         ))

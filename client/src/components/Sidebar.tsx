@@ -26,6 +26,7 @@ import {
   PanelLeftClose,
 } from 'lucide-react'
 import { useStore } from '../store'
+import { PageIcon } from './PageIcon'
 import type { Page } from '../types'
 
 interface TreeNode extends Page {
@@ -95,7 +96,9 @@ function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
           />
         </button>
         {node.icon ? (
-          <span className="tree-icon tree-emoji">{node.icon}</span>
+          <span className="tree-icon tree-emoji">
+            <PageIcon icon={node.icon} size={15} />
+          </span>
         ) : (
           <FileText size={15} className="tree-icon" />
         )}

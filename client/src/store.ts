@@ -81,7 +81,6 @@ interface AppState {
   addPage: (parentId: string | null) => Promise<void>
   renamePage: (id: string, title: string) => void
   setPageIcon: (id: string, icon: string | null) => void
-  setPageCover: (id: string, cover: string | null) => void
   deletePage: (id: string) => Promise<void>
   reorderPages: (
     items: Array<{ id: string; sort_order: number; parent_id: string | null }>
@@ -240,13 +239,6 @@ export const useStore = create<AppState>((set, get) => ({
       pages: s.pages.map((p) => (p.id === id ? { ...p, icon } : p)),
     }))
     api.updatePage(id, { icon })
-  },
-
-  setPageCover: (id, cover) => {
-    set((s) => ({
-      pages: s.pages.map((p) => (p.id === id ? { ...p, cover } : p)),
-    }))
-    api.updatePage(id, { cover })
   },
 
   deletePage: async (id) => {
