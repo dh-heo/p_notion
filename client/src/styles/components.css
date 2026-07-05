@@ -162,45 +162,11 @@
 }
 
 /* 페이지 아이콘 (이모지) */
-.page-icon-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 2px;
-}
-.page-icon {
-  font-size: 60px;
-  line-height: 1;
-  background: transparent;
-  border: none;
-  padding: 0 2px;
-  cursor: pointer;
-  border-radius: var(--radius);
-}
-.page-icon:disabled {
-  cursor: default;
-}
+/* 사이드바/백링크/멘션에 쓰는 이미지 아이콘 (PageIcon) */
 .page-icon-img {
   object-fit: cover;
   border-radius: var(--radius);
   display: block;
-}
-.page-icon-clear {
-  display: inline-flex;
-  border: none;
-  background: transparent;
-  color: var(--text-faint);
-  cursor: pointer;
-  padding: 3px;
-  border-radius: var(--radius);
-  opacity: 0;
-}
-.page-icon-row:hover .page-icon-clear {
-  opacity: 1;
-}
-.page-icon-clear:hover {
-  background: var(--bg-hover);
-  color: var(--text-soft);
 }
 
 /* 이모지 선택 팝오버 */

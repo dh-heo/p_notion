@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { DragEvent as ReactDragEvent } from 'react'
-import { Lock, LockOpen, Smile, X } from 'lucide-react'
+import { Lock, LockOpen, Smile } from 'lucide-react'
 import { useStore } from '../store'
 import { api } from '../api'
 import {
@@ -112,36 +112,15 @@ export function Editor() {
             {locked ? <Lock size={14} /> : <LockOpen size={14} />}
             {locked ? '잠금됨' : '편집 가능'}
           </button>
-          {!locked && !page.icon && (
+          {!locked && (
             <button
               className="page-meta-add"
               onClick={() => setIconOpen((v) => !v)}
             >
-              <Smile size={14} /> 아이콘 추가
+              <Smile size={14} /> {page.icon ? '아이콘 변경' : '아이콘 추가'}
             </button>
           )}
         </div>
-        {page.icon && (
-          <div className="page-icon-row">
-            <button
-              className="page-icon"
-              disabled={locked}
-              onClick={() => !locked && setIconOpen((v) => !v)}
-              title={locked ? undefined : '아이콘 변경'}
-            >
-              <PageIcon icon={page.icon} size={60} />
-            </button>
-            {!locked && (
-              <button
-                className="page-icon-clear"
-                title="아이콘 제거"
-                onClick={() => setPageIcon(page.id, null)}
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        )}
         {iconOpen && !locked && (
           <IconPicker
             hasIcon={!!page.icon}
