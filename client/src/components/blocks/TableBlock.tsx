@@ -14,6 +14,8 @@ import {
   ChevronDown,
   ArrowUpToLine,
   Download,
+  EyeOff,
+  Eye,
 } from 'lucide-react'
 import {
   DndContext,
@@ -153,6 +155,8 @@ export function TableBlock({ content, onChange, editable }: Props) {
     null
   )
   const [draftOpt, setDraftOpt] = useState('')
+  // 하단 "숨긴 열" 팝오버 열림 여부
+  const [hiddenPop, setHiddenPop] = useState(false)
 
   // 영역 선택 (r = 화면 행 인덱스, c = 열 인덱스)
   const [sel, setSel] = useState<{
@@ -187,6 +191,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
     setMenuCol(null)
     setEditCell(null)
     setDraftOpt('')
+    setHiddenPop(false)
   }
 
   const optionOf = (col: TableColumn, id: string) =>
@@ -278,10 +283,11 @@ export function TableBlock({ content, onChange, editable }: Props) {
     e.clipboardData.setData('text/html', gridToHtmlTable(html))
   }
 
-  // 표 전체(머리글 + 모든 행)를 CSV 파일로 저장
+  // 표 전체(머리글 + 모든 행)를 CSV 파일로 저장 — 숨긴 열은 제외
   const exportCSV = () => {
-    const header = columns.map((col) => col.name)
-    const rows = cells.map((_, r) => columns.map((col, c) => cellText(r, col, c)))
+    const vis = columns.map((col, c) => ({ col, c })).filter(({ col }) => !col.hidden)
+    const header = vis.map(({ col }) => col.name)
+    const rows = cells.map((_, r) => vis.map(({ col, c }) => cellText(r, col, c)))
     const csv = '\uFEFF' + gridToCSV([header, ...rows])
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -371,6 +377,30 @@ export function TableBlock({ content, onChange, editable }: Props) {
   const renameCol = (c: number, name: string) => {
     onChange({ columns: columns.map((col, i) => (i === c ? { ...col, name } : col)), cells })
   }
+  // 열 숨김 / 다시 표시 (데이터는 그대로, hidden 플래그만 토글)
+  const hideCol = (c: number) => {
+    onChange({
+      columns: columns.map((col, i) => (i === c ? { ...col, hidden: true } : col)),
+      cells,
+    })
+    closePops()
+  }
+  // 지정한 원본 인덱스들의 열을 다시 표시 (헤더 사이 마커·하단 목록 공용)
+  const showCols = (indices: number[]) => {
+    const set = new Set(indices)
+    onChange({
+      columns: columns.map((col, i) => (set.has(i) ? { ...col, hidden: false } : col)),
+      cells,
+    })
+  }
+  // 숨긴 열을 모두 표시 (완전 원복구)
+  const showAllCols = () => {
+    onChange({
+      columns: columns.map((col) => (col.hidden ? { ...col, hidden: false } : col)),
+      cells,
+    })
+    setHiddenPop(false)
+  }
   // 천 단위 쉼표 표시 토글 (text 열 전용, 메뉴는 열어 둔다)
   const toggleComma = (c: number) => {
     onChange({
@@ -388,9 +418,12 @@ export function TableBlock({ content, onChange, editable }: Props) {
   ) => {
     let tvr = vr
     let tc = c
-    if (dir === 'left') tc -= 1
-    else if (dir === 'right') tc += 1
-    else if (dir === 'up') tvr -= 1
+    if (dir === 'left' || dir === 'right') {
+      const step = dir === 'left' ? -1 : 1
+      tc += step
+      // 숨긴 열은 렌더되지 않으므로 건너뛴다
+      while (tc >= 0 && tc < columns.length && columns[tc].hidden) tc += step
+    } else if (dir === 'up') tvr -= 1
     else tvr += 1
     if (tc < 0 || tc >= columns.length || tvr < 0 || tvr >= viewRows.length) return
     const target = wrapRef.current?.querySelector<HTMLElement>(
@@ -563,7 +596,13 @@ export function TableBlock({ content, onChange, editable }: Props) {
     )
   }
 
-  const anyPopOpen = menuCol !== null || editCell !== null
+  // 렌더에는 숨기지 않은 열만 쓰되, 셀은 원본 인덱스로 저장되므로 원본 c를 함께 보존한다
+  const withIndex = columns.map((col, c) => ({ col, c }))
+  const visibleColumns = withIndex.filter(({ col }) => !col.hidden)
+  const hiddenColumns = withIndex.filter(({ col }) => col.hidden)
+  const canHide = visibleColumns.length > 1
+
+  const anyPopOpen = menuCol !== null || editCell !== null || hiddenPop
 
   return (
     <div
@@ -583,12 +622,15 @@ export function TableBlock({ content, onChange, editable }: Props) {
               onDragEnd={onColDragEnd}
             >
               <SortableContext
-                items={columns.map((col) => col.id)}
+                items={visibleColumns.map(({ col }) => col.id)}
                 strategy={horizontalListSortingStrategy}
               >
-                {columns.map((col, c) => {
+                {visibleColumns.map(({ col, c }, i) => {
                   const sorted = sort?.colId === col.id ? sort.dir : null
                   const filtered = filters[col.id] != null
+                  // 이 열 바로 앞(원본 순서상)에 숨겨진 열들 = 직전 보이는 열과 이 열 사이의 열들
+                  const prevC = i > 0 ? visibleColumns[i - 1].c : -1
+                  const gap = withIndex.slice(prevC + 1, c)
                   return (
                     <HeaderCell
                       key={col.id}
@@ -597,6 +639,8 @@ export function TableBlock({ content, onChange, editable }: Props) {
                       editable={editable}
                       sortDir={sorted}
                       filtered={filtered}
+                      hiddenBefore={gap.map(({ col: h, c: hc }) => h.name || `열 ${hc + 1}`)}
+                      onShowGap={() => showCols(gap.map(({ c: hc }) => hc))}
                       onToggleMenu={() =>
                         setMenuCol((m) => (m === col.id ? null : col.id))
                       }
@@ -608,6 +652,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
                             sortDir={sorted}
                             filter={filters[col.id]}
                             canDelete={columns.length > 1}
+                            canHide={canHide}
                             onSort={(dir) => {
                               setSort(dir ? { colId: col.id, dir } : null)
                               setMenuCol(null)
@@ -621,6 +666,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
                             onDeleteOption={(optId) => deleteOption(c, optId)}
                             onInsertColAfter={() => insertColAfter(c)}
                             onToggleComma={() => toggleComma(c)}
+                            onHideCol={() => hideCol(c)}
                             onDeleteCol={() => deleteCol(c)}
                           />
                         ) : null
@@ -656,7 +702,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
                   </div>
                 </td>
               )}
-              {columns.map((col, c) => (
+              {visibleColumns.map(({ col, c }) => (
                 <td
                   key={col.id}
                   className={isSelected(vr, c) ? 'b-cell-selected' : undefined}
@@ -783,6 +829,35 @@ export function TableBlock({ content, onChange, editable }: Props) {
         <button onClick={exportCSV} title="CSV로 저장">
           <Download size={14} /> CSV
         </button>
+        {editable && hiddenColumns.length > 0 && (
+          <div className="b-hidden-wrap">
+            <button
+              onClick={() => setHiddenPop((v) => !v)}
+              title="숨긴 열 보기"
+            >
+              <EyeOff size={14} /> 숨긴 열 {hiddenColumns.length}
+            </button>
+            {hiddenPop && (
+              <div
+                className="b-hidden-pop"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                {hiddenColumns.map(({ col, c }) => (
+                  <button
+                    key={col.id}
+                    className="b-pop-item"
+                    onClick={() => showCols([c])}
+                  >
+                    <Eye size={14} /> {col.name || `열 ${c + 1}`}
+                  </button>
+                ))}
+                <button className="b-pop-item b-pop-showall" onClick={showAllCols}>
+                  <Eye size={14} /> 모두 보이기
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -970,6 +1045,8 @@ function HeaderCell({
   editable,
   sortDir,
   filtered,
+  hiddenBefore,
+  onShowGap,
   onToggleMenu,
   onRename,
   menu,
@@ -979,6 +1056,9 @@ function HeaderCell({
   editable: boolean
   sortDir: 'asc' | 'desc' | null
   filtered: boolean
+  // 이 열 바로 앞에 숨겨진 열들의 이름 (없으면 빈 배열)
+  hiddenBefore: string[]
+  onShowGap: () => void
   onToggleMenu: () => void
   onRename: (name: string) => void
   menu: ReactNode
@@ -991,6 +1071,16 @@ function HeaderCell({
       className={`b-th${isDragging ? ' dragging' : ''}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
+      {editable && hiddenBefore.length > 0 && (
+        <button
+          className="b-th-gap"
+          title={`숨긴 열 ${hiddenBefore.length}개: ${hiddenBefore.join(', ')} — 클릭하여 펼치기`}
+          onClick={onShowGap}
+        >
+          <EyeOff size={11} />
+          {hiddenBefore.length > 1 && <span>{hiddenBefore.length}</span>}
+        </button>
+      )}
       <div className="b-th-inner">
         {editable && (
           <button className="b-th-drag" title="열 이동" {...attributes} {...listeners}>
@@ -1023,6 +1113,7 @@ interface MenuProps {
   sortDir: 'asc' | 'desc' | null
   filter: string[] | string | undefined
   canDelete: boolean
+  canHide: boolean
   onSort: (dir: 'asc' | 'desc' | null) => void
   onTextFilter: (q: string) => void
   onToggleOpt: (optId: string) => void
@@ -1030,6 +1121,7 @@ interface MenuProps {
   onDeleteOption: (optId: string) => void
   onInsertColAfter: () => void
   onToggleComma: () => void
+  onHideCol: () => void
   onDeleteCol: () => void
 }
 
@@ -1038,6 +1130,7 @@ function ColumnMenu({
   sortDir,
   filter,
   canDelete,
+  canHide,
   onSort,
   onTextFilter,
   onToggleOpt,
@@ -1045,6 +1138,7 @@ function ColumnMenu({
   onDeleteOption,
   onInsertColAfter,
   onToggleComma,
+  onHideCol,
   onDeleteCol,
 }: MenuProps) {
   const allIds = ['', ...(col.options ?? []).map((o) => o.id)]
@@ -1067,6 +1161,11 @@ function ColumnMenu({
         <button className="b-pop-item" onClick={onInsertColAfter}>
           <ArrowRightToLine size={14} /> 오른쪽에 열 추가
         </button>
+        {canHide && (
+          <button className="b-pop-item" onClick={onHideCol}>
+            <EyeOff size={14} /> 열 숨기기
+          </button>
+        )}
         {canDelete && (
           <button className="b-pop-item danger" onClick={onDeleteCol}>
             <Trash2 size={14} /> 열 삭제

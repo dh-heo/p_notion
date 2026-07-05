@@ -105,6 +105,8 @@ export interface TableColumn {
   options?: TableOption[]
   // text 열 전용: 숫자 셀을 1000단위 쉼표로 표시 (저장값은 원본 그대로)
   comma?: boolean
+  // 열 숨김: 데이터는 유지한 채 렌더링에서만 제외 (하단 "숨긴 열"에서 다시 표시)
+  hidden?: boolean
 }
 export interface TableContent {
   // text 셀은 HTML 문자열, select 셀은 옵션 id를 담는다 (빈 문자열 = 미지정)

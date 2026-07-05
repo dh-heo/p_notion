@@ -768,6 +768,31 @@
   padding: 4px 6px;
   color: var(--text-soft);
 }
+/* 열 사이에 숨긴 열이 있음을 알리는 마커 (헤더 왼쪽 경계에 겹쳐 배치) */
+.b-th-gap {
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 16px;
+  padding: 0 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+.b-th-gap:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
 .b-th-name {
   flex: 1;
   min-width: 0;
@@ -877,6 +902,25 @@
   padding: 6px;
   text-align: left;
 }
+/* 하단 "숨긴 열" 팝오버 — 표 아래쪽이라 위로 펼친다 */
+.b-hidden-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.b-hidden-pop {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 50;
+  margin-bottom: 2px;
+  min-width: 160px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  padding: 6px;
+  text-align: left;
+}
 .b-pop-section {
   padding: 4px 2px;
 }
@@ -908,6 +952,11 @@
   background: var(--bg-hover);
 }
 .b-pop-item.active {
+  color: var(--accent);
+}
+.b-pop-showall {
+  margin-top: 2px;
+  border-top: 1px solid var(--border);
   color: var(--accent);
 }
 .b-pop-item.danger:hover {
