@@ -61,13 +61,13 @@ const chip = (i: number) => CHIP_COLORS[i % CHIP_COLORS.length]
 
 // 셀 배경 팔레트 (칩보다 은은한 톤). 행/열 배경색 인덱스가 여기를 가리킨다.
 const BG_COLORS = [
-  '#faf1cf', // 노랑
-  '#f8e3df', // 분홍
-  '#e5efdd', // 초록
-  '#e0ebf3', // 파랑
-  '#f6e8d8', // 주황
-  '#ece1f2', // 보라
-  '#ebe7de', // 회색
+  '#fdf8e6', // 노랑
+  '#fbeeeb', // 분홍
+  '#f0f6ec', // 초록
+  '#eef4f9', // 파랑
+  '#fbf1e7', // 주황
+  '#f5eef9', // 보라
+  '#f3f0ea', // 회색
 ]
 const bgColor = (i: number) => BG_COLORS[i % BG_COLORS.length]
 
