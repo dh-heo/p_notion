@@ -699,11 +699,13 @@
   vertical-align: middle;
 }
 .b-row-tools {
+  position: relative;
   display: inline-flex;
   gap: 1px;
 }
 .b-row-add,
-.b-row-del {
+.b-row-del,
+.b-row-color {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -717,10 +719,12 @@
   transition: opacity 0.1s;
 }
 .b-table tbody tr:hover .b-row-add,
-.b-table tbody tr:hover .b-row-del {
+.b-table tbody tr:hover .b-row-del,
+.b-table tbody tr:hover .b-row-color {
   opacity: 1;
 }
-.b-row-add:hover {
+.b-row-add:hover,
+.b-row-color:hover {
   background: var(--bg-hover);
   color: var(--text-soft);
 }
@@ -731,6 +735,53 @@
 .b-row-del:disabled {
   opacity: 0;
   pointer-events: none;
+}
+/* 행 배경색 팝오버 (거터 기준 상대 위치) */
+.b-row-color-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  margin-top: 2px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  padding: 4px;
+}
+/* 배경색 스와치 (행 팝오버 · 열 메뉴 공용) */
+.b-bg-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 6px;
+  max-width: 148px;
+}
+.b-bg-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.b-bg-swatch.active {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.b-bg-none {
+  position: relative;
+  background: var(--bg-elevated);
+}
+.b-bg-none::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 50%;
+  height: 1px;
+  background: var(--accent);
+  transform: rotate(-45deg);
 }
 .b-table-actions button:disabled {
   opacity: 0.45;

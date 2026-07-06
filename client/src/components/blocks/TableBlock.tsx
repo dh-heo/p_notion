@@ -16,6 +16,7 @@ import {
   Download,
   EyeOff,
   Eye,
+  Palette,
 } from 'lucide-react'
 import {
   DndContext,
@@ -57,6 +58,18 @@ const CHIP_COLORS = [
   { bg: '#e6e1d6', text: '#5a5448' }, // 회색
 ]
 const chip = (i: number) => CHIP_COLORS[i % CHIP_COLORS.length]
+
+// 셀 배경 팔레트 (칩보다 은은한 톤). 행/열 배경색 인덱스가 여기를 가리킨다.
+const BG_COLORS = [
+  '#faf1cf', // 노랑
+  '#f8e3df', // 분홍
+  '#e5efdd', // 초록
+  '#e0ebf3', // 파랑
+  '#f6e8d8', // 주황
+  '#ece1f2', // 보라
+  '#ebe7de', // 회색
+]
+const bgColor = (i: number) => BG_COLORS[i % BG_COLORS.length]
 
 function stripHtml(html: string): string {
   const d = document.createElement('div')
@@ -123,6 +136,7 @@ interface Props {
 export function TableBlock({ content, onChange, editable }: Props) {
   // cells/columns가 없는 손상·구버전 데이터도 크래시 없이 렌더되도록 방어적으로 읽는다
   const cells: string[][] = content.cells ?? []
+  const rowColors: (number | null)[] = content.rowColors ?? []
 
   // 마이그레이션/복구: cells 또는 columns가 비어 있으면 유효한 기본 표로 1회 영속화
   useEffect(() => {
@@ -147,6 +161,18 @@ export function TableBlock({ content, onChange, editable }: Props) {
       type: 'text',
     }))
 
+  // 모든 변경은 이 헬퍼를 거쳐 rowColors 등 지정하지 않은 필드를 보존한다
+  const commit = (next: {
+    columns?: TableColumn[]
+    cells?: string[][]
+    rowColors?: (number | null)[]
+  }) =>
+    onChange({
+      columns: next.columns ?? columns,
+      cells: next.cells ?? cells,
+      rowColors: next.rowColors ?? rowColors,
+    })
+
   const [sort, setSort] = useState<SortState>(null)
   const [filters, setFilters] = useState<FilterState>({})
   // 열린 팝오버: 헤더 메뉴(열 id) / select 셀 편집({r, colId})
@@ -157,6 +183,8 @@ export function TableBlock({ content, onChange, editable }: Props) {
   const [draftOpt, setDraftOpt] = useState('')
   // 하단 "숨긴 열" 팝오버 열림 여부
   const [hiddenPop, setHiddenPop] = useState(false)
+  // 행 배경색 팝오버가 열린 원본 행 인덱스
+  const [colorRow, setColorRow] = useState<number | null>(null)
 
   // 영역 선택 (r = 화면 행 인덱스, c = 열 인덱스)
   const [sel, setSel] = useState<{
@@ -192,6 +220,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
     setEditCell(null)
     setDraftOpt('')
     setHiddenPop(false)
+    setColorRow(null)
   }
 
   const optionOf = (col: TableColumn, id: string) =>
@@ -302,25 +331,40 @@ export function TableBlock({ content, onChange, editable }: Props) {
   const setTextCell = (r: number, c: number, value: string) => {
     const next = cells.map((row) => row.slice())
     next[r][c] = value
-    onChange({ columns, cells: next })
+    commit({ cells: next })
   }
   const setSelectCell = (r: number, c: number, optionId: string) => {
     const next = cells.map((row) => row.slice())
     next[r][c] = optionId
-    onChange({ columns, cells: next })
+    commit({ cells: next })
     setEditCell(null)
   }
+  // rowColors를 원본 행 인덱스에 맞춰 재구성하는 헬퍼 (op 함수가 배열을 변형)
+  const rebuildRowColors = (fn: (rc: (number | null)[]) => (number | null)[]) =>
+    fn(cells.map((_, i) => rowColors[i] ?? null))
   const addRow = () => {
-    onChange({ columns, cells: [...cells, Array(columns.length).fill('')] })
+    commit({
+      cells: [...cells, Array(columns.length).fill('')],
+      rowColors: [...rebuildRowColors((rc) => rc), null],
+    })
   }
   const insertRowBelow = (r: number) => {
     const next = cells.map((row) => row.slice())
     next.splice(r + 1, 0, Array(columns.length).fill(''))
-    onChange({ columns, cells: next })
+    commit({
+      cells: next,
+      rowColors: rebuildRowColors((rc) => {
+        rc.splice(r + 1, 0, null)
+        return rc
+      }),
+    })
   }
   const deleteRow = (r: number) => {
     if (cells.length <= 1) return
-    onChange({ columns, cells: cells.filter((_, i) => i !== r) })
+    commit({
+      cells: cells.filter((_, i) => i !== r),
+      rowColors: rebuildRowColors((rc) => rc.filter((_, i) => i !== r)),
+    })
   }
   // 맨 위 행의 값을 열 머리글로 올리고 그 행은 본문에서 제거
   const promoteFirstRowToHeader = () => {
@@ -333,10 +377,14 @@ export function TableBlock({ content, onChange, editable }: Props) {
           ? optionOf(col, first[c] ?? '')?.label ?? ''
           : stripHtml(first[c] ?? ''),
     }))
-    onChange({ columns: newCols, cells: cells.slice(1) })
+    commit({
+      columns: newCols,
+      cells: cells.slice(1),
+      rowColors: rebuildRowColors((rc) => rc.slice(1)),
+    })
   }
   const addCol = () => {
-    onChange({
+    commit({
       columns: [...columns, { id: uid(), name: '', type: 'text' }],
       cells: cells.map((row) => [...row, '']),
     })
@@ -344,7 +392,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
   const insertColAfter = (c: number) => {
     const cols = columns.slice()
     cols.splice(c + 1, 0, { id: uid(), name: '', type: 'text' })
-    onChange({
+    commit({
       columns: cols,
       cells: cells.map((row) => {
         const r = row.slice()
@@ -361,52 +409,73 @@ export function TableBlock({ content, onChange, editable }: Props) {
     const from = columns.findIndex((col) => col.id === active.id)
     const to = columns.findIndex((col) => col.id === over.id)
     if (from === -1 || to === -1) return
-    onChange({
+    commit({
       columns: arrayMove(columns, from, to),
       cells: cells.map((row) => arrayMove(row, from, to)),
     })
   }
   const deleteCol = (c: number) => {
     if (columns.length <= 1) return
-    onChange({
+    commit({
       columns: columns.filter((_, i) => i !== c),
       cells: cells.map((row) => row.filter((_, i) => i !== c)),
     })
     closePops()
   }
   const renameCol = (c: number, name: string) => {
-    onChange({ columns: columns.map((col, i) => (i === c ? { ...col, name } : col)), cells })
+    commit({ columns: columns.map((col, i) => (i === c ? { ...col, name } : col)) })
   }
   // 열 숨김 / 다시 표시 (데이터는 그대로, hidden 플래그만 토글)
   const hideCol = (c: number) => {
-    onChange({
+    commit({
       columns: columns.map((col, i) => (i === c ? { ...col, hidden: true } : col)),
-      cells,
     })
     closePops()
   }
   // 지정한 원본 인덱스들의 열을 다시 표시 (헤더 사이 마커·하단 목록 공용)
   const showCols = (indices: number[]) => {
     const set = new Set(indices)
-    onChange({
+    commit({
       columns: columns.map((col, i) => (set.has(i) ? { ...col, hidden: false } : col)),
-      cells,
     })
   }
   // 숨긴 열을 모두 표시 (완전 원복구)
   const showAllCols = () => {
-    onChange({
+    commit({
       columns: columns.map((col) => (col.hidden ? { ...col, hidden: false } : col)),
-      cells,
     })
     setHiddenPop(false)
   }
   // 천 단위 쉼표 표시 토글 (text 열 전용, 메뉴는 열어 둔다)
   const toggleComma = (c: number) => {
-    onChange({
+    commit({
       columns: columns.map((col, i) => (i === c ? { ...col, comma: !col.comma } : col)),
-      cells,
     })
+  }
+  // 열 배경색 설정 (팔레트 인덱스, null = 없음). 메뉴는 열어 둔다.
+  const setColBg = (c: number, bg: number | null) => {
+    commit({
+      columns: columns.map((col, i) =>
+        i === c ? { ...col, bg: bg ?? undefined } : col
+      ),
+    })
+  }
+  // 행 배경색 설정 (원본 행 인덱스, null = 없음)
+  const setRowBg = (r: number, bg: number | null) => {
+    commit({
+      rowColors: rebuildRowColors((rc) => {
+        rc[r] = bg
+        return rc
+      }),
+    })
+  }
+  // 셀에 적용할 배경색: 행 색이 우선, 없으면 열 색
+  const bgFor = (r: number, c: number): string | undefined => {
+    const rc = rowColors[r]
+    if (rc != null) return bgColor(rc)
+    const cb = columns[c]?.bg
+    if (cb != null) return bgColor(cb)
+    return undefined
   }
 
   // 화살표로 인접 셀로 포커스 이동 (vr = 화면 행, c = 열). select 열은 대상에서 제외된다.
@@ -472,7 +541,12 @@ export function TableBlock({ content, onChange, editable }: Props) {
         }
       }
     }
-    onChange({ columns: cols, cells: rows })
+    commit({
+      columns: cols,
+      cells: rows,
+      // 붙여넣기로 행이 늘어날 수 있으므로 rowColors를 새 행 수에 맞춰 채운다
+      rowColors: rows.map((_, r) => rowColors[r] ?? null),
+    })
   }
 
   // 열 타입 전환 (text <-> select). 기존 값을 최대한 보존한다.
@@ -498,7 +572,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
         copy[c] = oid
         return copy
       })
-      onChange({
+      commit({
         columns: columns.map((x, i) => (i === c ? { ...x, type: 'select', options } : x)),
         cells: next,
       })
@@ -508,7 +582,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
         copy[c] = escapeHtml(optionOf(col, row[c] ?? '')?.label ?? '')
         return copy
       })
-      onChange({
+      commit({
         columns: columns.map((x, i) =>
           i === c ? { ...x, type: 'text', options: undefined } : x
         ),
@@ -535,7 +609,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
     )
     const next = cells.map((row) => row.slice())
     next[r][c] = opt.id
-    onChange({ columns: newCols, cells: next })
+    commit({ columns: newCols, cells: next })
     setEditCell(null)
     setDraftOpt('')
   }
@@ -549,7 +623,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
       if (copy[c] === optId) copy[c] = ''
       return copy
     })
-    onChange({ columns: newCols, cells: next })
+    commit({ columns: newCols, cells: next })
     setFilters((f) => {
       const cur = f[col.id]
       if (!Array.isArray(cur)) return f
@@ -602,7 +676,8 @@ export function TableBlock({ content, onChange, editable }: Props) {
   const hiddenColumns = withIndex.filter(({ col }) => col.hidden)
   const canHide = visibleColumns.length > 1
 
-  const anyPopOpen = menuCol !== null || editCell !== null || hiddenPop
+  const anyPopOpen =
+    menuCol !== null || editCell !== null || hiddenPop || colorRow !== null
 
   return (
     <div
@@ -666,6 +741,7 @@ export function TableBlock({ content, onChange, editable }: Props) {
                             onDeleteOption={(optId) => deleteOption(c, optId)}
                             onInsertColAfter={() => insertColAfter(c)}
                             onToggleComma={() => toggleComma(c)}
+                            onSetBg={(bg) => setColBg(c, bg)}
                             onHideCol={() => hideCol(c)}
                             onDeleteCol={() => deleteCol(c)}
                           />
@@ -699,6 +775,29 @@ export function TableBlock({ content, onChange, editable }: Props) {
                     >
                       <Trash2 size={13} />
                     </button>
+                    <button
+                      className="b-row-color"
+                      title="행 배경색"
+                      onClick={() =>
+                        setColorRow((cr) => (cr === r ? null : r))
+                      }
+                    >
+                      <Palette size={13} />
+                    </button>
+                    {colorRow === r && (
+                      <div
+                        className="b-row-color-pop"
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        <ColorSwatches
+                          value={rowColors[r] ?? null}
+                          onPick={(i) => {
+                            setRowBg(r, i)
+                            setColorRow(null)
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </td>
               )}
@@ -706,6 +805,8 @@ export function TableBlock({ content, onChange, editable }: Props) {
                 <td
                   key={col.id}
                   className={isSelected(vr, c) ? 'b-cell-selected' : undefined}
+                  // 선택 하이라이트가 배경색을 덮도록 선택 중엔 인라인 배경을 넣지 않는다
+                  style={isSelected(vr, c) ? undefined : { background: bgFor(r, c) }}
                   onMouseDown={(e) => onCellDown(vr, c, e)}
                   onMouseEnter={(e) => onCellEnter(vr, c, e)}
                 >
@@ -1038,6 +1139,33 @@ function TextCell({
   )
 }
 
+// 행/열 배경색 선택 팔레트 ("없음" + 색상 스와치)
+function ColorSwatches({
+  value,
+  onPick,
+}: {
+  value: number | null
+  onPick: (i: number | null) => void
+}) {
+  return (
+    <div className="b-bg-swatches">
+      <button
+        className={`b-bg-swatch b-bg-none${value == null ? ' active' : ''}`}
+        title="없음"
+        onClick={() => onPick(null)}
+      />
+      {BG_COLORS.map((bg, i) => (
+        <button
+          key={i}
+          className={`b-bg-swatch${value === i ? ' active' : ''}`}
+          style={{ background: bg }}
+          onClick={() => onPick(i)}
+        />
+      ))}
+    </div>
+  )
+}
+
 // 헤더 셀: 드래그 핸들(grip)로만 열 순서를 바꾼다 (이름 입력/메뉴 클릭과 충돌하지 않게)
 function HeaderCell({
   col,
@@ -1121,6 +1249,7 @@ interface MenuProps {
   onDeleteOption: (optId: string) => void
   onInsertColAfter: () => void
   onToggleComma: () => void
+  onSetBg: (bg: number | null) => void
   onHideCol: () => void
   onDeleteCol: () => void
 }
@@ -1138,6 +1267,7 @@ function ColumnMenu({
   onDeleteOption,
   onInsertColAfter,
   onToggleComma,
+  onSetBg,
   onHideCol,
   onDeleteCol,
 }: MenuProps) {
@@ -1171,6 +1301,13 @@ function ColumnMenu({
             <Trash2 size={14} /> 열 삭제
           </button>
         )}
+      </div>
+
+      <div className="b-pop-section">
+        <div className="b-pop-label">
+          <Palette size={12} /> 배경색
+        </div>
+        <ColorSwatches value={col.bg ?? null} onPick={onSetBg} />
       </div>
 
       <div className="b-pop-section">
