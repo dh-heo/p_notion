@@ -55,7 +55,7 @@ const MD: Record<string, { type: BlockType; level?: 1 | 2 | 3 }> = {
   '[ ]': { type: 'todo' },
 }
 
-// 캐럿 바로 앞의 '->' / '<-'를 화살표(→ / ←)로 치환 (Notion 식). 치환했으면 true
+// 캐럿 바로 앞의 '->' / '<-'를 화살표(→ / ←)로 치환. 치환했으면 true
 function replaceArrowsAtCaret(): boolean {
   const sel = window.getSelection()
   if (!sel || !sel.isCollapsed || sel.rangeCount === 0) return false

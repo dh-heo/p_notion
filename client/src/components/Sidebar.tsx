@@ -51,6 +51,24 @@ function buildTree(pages: Page[]): TreeNode[] {
   return roots
 }
 
+// 접어둔(펼치지 않은) 페이지 id를 localStorage에 저장해 새로고침 후에도 폴딩 상태를 유지한다.
+// 기본값은 펼침이므로 "접힌" id만 저장한다.
+const COLLAPSED_KEY = 'pnotion:collapsed-pages'
+function loadCollapsed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_KEY)
+    return new Set<string>(raw ? JSON.parse(raw) : [])
+  } catch {
+    return new Set<string>()
+  }
+}
+function persistExpanded(id: string, expanded: boolean) {
+  const set = loadCollapsed()
+  if (expanded) set.delete(id)
+  else set.add(id)
+  localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...set]))
+}
+
 // 최상위(루트) 페이지에만 왼쪽 색 바를 붙여 최상위 계층을 구분한다 (하위는 바 없음)
 const ROOT_BAR_COLOR = '#b9603a'
 function depthColor(depth: number): string | undefined {
@@ -62,7 +80,7 @@ function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
   const selectPage = useStore((s) => s.selectPage)
   const addPage = useStore((s) => s.addPage)
   const deletePage = useStore((s) => s.deletePage)
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(() => !loadCollapsed().has(node.id))
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: node.id })
@@ -87,7 +105,10 @@ function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
           className={`tree-chevron${hasChildren ? '' : ' hidden'}`}
           onClick={(e) => {
             e.stopPropagation()
-            setExpanded((v) => !v)
+            setExpanded((v) => {
+              persistExpanded(node.id, !v)
+              return !v
+            })
           }}
         >
           <ChevronRight
@@ -109,6 +130,7 @@ function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
             onClick={(e) => {
               e.stopPropagation()
               addPage(node.id)
+              persistExpanded(node.id, true)
               setExpanded(true)
             }}
           >
@@ -196,6 +218,13 @@ export function Sidebar() {
         <span className="sidebar-title">My Workspace</span>
         <button
           className="sidebar-new"
+          title="새 페이지"
+          onClick={() => addPage(null)}
+        >
+          <Plus size={16} />
+        </button>
+        <button
+          className="sidebar-new"
           title="검색 (⌘K)"
           onClick={() => setSearchOpen(true)}
         >
@@ -203,13 +232,6 @@ export function Sidebar() {
         </button>
         <button className="sidebar-new" title="사이드바 접기" onClick={hideSidebar}>
           <PanelLeftClose size={16} />
-        </button>
-        <button
-          className="sidebar-new"
-          title="새 페이지"
-          onClick={() => addPage(null)}
-        >
-          <Plus size={16} />
         </button>
         <button className="sidebar-new" title="휴지통" onClick={openTrash}>
           <Trash2 size={16} />

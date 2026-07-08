@@ -27,7 +27,7 @@ function App() {
   }, [checkAuth])
 
   useEffect(() => {
-    document.title = pageTitle?.trim() || 'p_notion'
+    document.title = pageTitle?.trim() || 'No title'
   }, [pageTitle])
 
   // Cmd/Ctrl+K로 검색 열기 (단, 편집 중 선택 영역이 있으면 RichText의 링크 단축키에 양보)
