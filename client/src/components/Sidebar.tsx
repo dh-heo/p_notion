@@ -75,12 +75,26 @@ function depthColor(depth: number): string | undefined {
   return depth === 0 ? ROOT_BAR_COLOR : undefined
 }
 
+// 페이지 제목 왼쪽에 붙이는 색상 플래그 팔레트 (우클릭 메뉴에서 지정)
+const FLAG_COLORS: { label: string; value: string }[] = [
+  { label: '빨강', value: '#c0392b' },
+  { label: '주황', value: '#c9702e' },
+  { label: '노랑', value: '#c9a227' },
+  { label: '초록', value: '#4f8a4f' },
+  { label: '파랑', value: '#3f6184' },
+  { label: '보라', value: '#7a5aa0' },
+  { label: '분홍', value: '#c65d8a' },
+]
+
 function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
   const currentPageId = useStore((s) => s.currentPageId)
   const selectPage = useStore((s) => s.selectPage)
   const addPage = useStore((s) => s.addPage)
   const deletePage = useStore((s) => s.deletePage)
+  const setPageColor = useStore((s) => s.setPageColor)
   const [expanded, setExpanded] = useState(() => !loadCollapsed().has(node.id))
+  // 우클릭 색상 메뉴 위치 (null = 닫힘)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: node.id })
@@ -98,6 +112,10 @@ function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
           boxShadow: depthColor(depth) ? `inset 3px 0 0 ${depthColor(depth)}` : undefined,
         }}
         onClick={() => selectPage(node.id)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          setMenu({ x: e.clientX, y: e.clientY })
+        }}
         {...attributes}
         {...listeners}
       >
@@ -122,6 +140,9 @@ function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
           </span>
         ) : (
           <FileText size={15} className="tree-icon" />
+        )}
+        {node.color && (
+          <span className="tree-flag" style={{ background: node.color }} />
         )}
         <span className="tree-title">{node.title || '제목 없음'}</span>
         <span className="tree-actions">
@@ -150,6 +171,40 @@ function PageRow({ node, depth }: { node: TreeNode; depth: number }) {
       </div>
       {hasChildren && expanded && (
         <PageBranch nodes={node.children} depth={depth + 1} />
+      )}
+      {menu && (
+        <>
+          <div className="ctx-backdrop" onClick={() => setMenu(null)} />
+          <div
+            className="ctx-menu"
+            style={{ top: menu.y, left: menu.x }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="ctx-swatches">
+              {FLAG_COLORS.map((c) => (
+                <button
+                  key={c.value}
+                  className="ctx-swatch"
+                  style={{ background: c.value }}
+                  title={c.label}
+                  onClick={() => {
+                    setPageColor(node.id, c.value)
+                    setMenu(null)
+                  }}
+                />
+              ))}
+            </div>
+            <button
+              className="ctx-item"
+              onClick={() => {
+                setPageColor(node.id, null)
+                setMenu(null)
+              }}
+            >
+              색상 제거
+            </button>
+          </div>
+        </>
       )}
     </div>
   )
@@ -240,6 +295,7 @@ export function Sidebar() {
           <LogOut size={16} />
         </button>
       </div>
+      <RecentSection />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -249,6 +305,41 @@ export function Sidebar() {
       </DndContext>
       {trashOpen && <TrashModal onClose={() => setTrashOpen(false)} />}
     </aside>
+  )
+}
+
+// 가장 최근에 수정된 5개 페이지를 사이드바 상단에 따로 보여준다
+function RecentSection() {
+  const pages = useStore((s) => s.pages)
+  const currentPageId = useStore((s) => s.currentPageId)
+  const selectPage = useStore((s) => s.selectPage)
+  const recent = [...pages]
+    .sort((a, b) => b.updated_at - a.updated_at)
+    .slice(0, 5)
+  if (recent.length === 0) return null
+  return (
+    <div className="recent-section">
+      <div className="recent-title">최근 편집</div>
+      {recent.map((p) => (
+        <div
+          key={p.id}
+          className={`recent-row${currentPageId === p.id ? ' active' : ''}`}
+          onClick={() => selectPage(p.id)}
+        >
+          {p.color && (
+            <span className="tree-flag" style={{ background: p.color }} />
+          )}
+          {p.icon ? (
+            <span className="tree-icon tree-emoji">
+              <PageIcon icon={p.icon} size={14} />
+            </span>
+          ) : (
+            <FileText size={14} className="tree-icon" />
+          )}
+          <span className="tree-title">{p.title || '제목 없음'}</span>
+        </div>
+      ))}
+    </div>
   )
 }
 

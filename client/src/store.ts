@@ -93,6 +93,7 @@ interface AppState {
   addPage: (parentId: string | null) => Promise<void>
   renamePage: (id: string, title: string) => void
   setPageIcon: (id: string, icon: string | null) => void
+  setPageColor: (id: string, color: string | null) => void
   deletePage: (id: string) => Promise<void>
   reorderPages: (
     items: Array<{ id: string; sort_order: number; parent_id: string | null }>
@@ -125,6 +126,11 @@ interface AppState {
   convertBlock: (id: string, type: BlockType, content?: BlockContent) => Promise<void>
   // 다중선택된 텍스트 블록들을 한 번에 불릿/번호 목록으로 변환 (각 블록의 html은 보존)
   convertBlocks: (ids: string[], type: 'bullet' | 'numbered') => Promise<void>
+  // 다중선택된 텍스트 블록들에 서식(굵게/글자색/배경색)을 한 번에 적용
+  formatBlocks: (
+    ids: string[],
+    format: { kind: 'bold' | 'color' | 'bg'; value?: string }
+  ) => Promise<void>
   deleteBlock: (id: string, focusPrev?: boolean) => Promise<void>
   deleteBlocks: (ids: string[]) => Promise<void>
   setSelectedBlocks: (ids: string[]) => void
@@ -256,6 +262,13 @@ export const useStore = create<AppState>((set, get) => ({
       pages: s.pages.map((p) => (p.id === id ? { ...p, icon } : p)),
     }))
     api.updatePage(id, { icon })
+  },
+
+  setPageColor: (id, color) => {
+    set((s) => ({
+      pages: s.pages.map((p) => (p.id === id ? { ...p, color } : p)),
+    }))
+    api.updatePage(id, { color })
   },
 
   deletePage: async (id) => {
@@ -402,10 +415,21 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   updateContent: (id, content) => {
+    const pageId = get().currentPageId
     set((s) => ({
       blocks: s.blocks.map((b) => (b.id === id ? { ...b, content } : b)),
     }))
-    debounceSave(id, () => api.updateBlock(id, { content }))
+    debounceSave(id, () => {
+      api.updateBlock(id, { content })
+      // 저장 시점에 소속 페이지의 updated_at을 올려 "최근 편집" 목록에 반영 (서버도 touchPage).
+      // 입력마다가 아니라 디바운스 시점에만 갱신해 사이드바 재렌더를 줄인다.
+      if (pageId)
+        set((s) => ({
+          pages: s.pages.map((p) =>
+            p.id === pageId ? { ...p, updated_at: Date.now() } : p
+          ),
+        }))
+    })
   },
 
   convertBlock: async (id, type, content) => {
@@ -447,6 +471,37 @@ export const useStore = create<AppState>((set, get) => ({
     }))
     await Promise.all(
       targets.map((b) => api.updateBlock(b.id, { type, content: contentOf(b) }))
+    )
+  },
+
+  formatBlocks: async (ids, format) => {
+    const idset = new Set(ids)
+    const { blocks } = get()
+    const TEXT = new Set(['paragraph', 'heading', 'bullet', 'numbered', 'todo', 'quote', 'callout'])
+    // html이 비어있지 않은 텍스트 블록만 대상
+    const targets = blocks.filter(
+      (b) => idset.has(b.id) && TEXT.has(b.type) && !!(b.content as { html?: string }).html
+    )
+    if (targets.length === 0) return
+    targets.forEach((b) => cancelSave(b.id))
+    // 블록 html 전체를 서식 태그로 감싼다 (색은 SANITIZE 허용 span)
+    const wrap = (html: string): string => {
+      if (format.kind === 'bold') return `<strong>${html}</strong>`
+      const prop = format.kind === 'color' ? 'color' : 'background-color'
+      return `<span style="${prop}:${format.value}">${html}</span>`
+    }
+    const nextContent = (b: Block): BlockContent => {
+      const c = b.content as { html: string }
+      return { ...b.content, html: wrap(c.html) } as BlockContent
+    }
+    const patched = new Map(targets.map((b) => [b.id, nextContent(b)]))
+    set((s) => ({
+      blocks: s.blocks.map((b) =>
+        patched.has(b.id) ? { ...b, content: patched.get(b.id)! } : b
+      ),
+    }))
+    await Promise.all(
+      targets.map((b) => api.updateBlock(b.id, { content: patched.get(b.id)! }))
     )
   },
 

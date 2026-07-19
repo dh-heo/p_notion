@@ -15,6 +15,11 @@ interface BlockRow {
   updated_at: number;
 }
 
+// 블록이 바뀌면 소속 페이지의 updated_at도 갱신 ("최근 편집" 정렬용)
+function touchPage(pageId: string, now: number) {
+  db.prepare("UPDATE page SET updated_at = ? WHERE id = ?").run(now, pageId);
+}
+
 // 한 페이지의 모든 블록 (정렬 순)
 blocks.get("/pages/:pageId/blocks", (req, res) => {
   const rows = db
@@ -66,6 +71,7 @@ blocks.post("/blocks", (req, res) => {
     now,
     now
   );
+  touchPage(page_id, now);
 
   const row = db.prepare("SELECT * FROM block WHERE id = ?").get(id) as BlockRow;
   res.status(201).json({ ...row, content: JSON.parse(row.content) });
@@ -89,19 +95,25 @@ blocks.patch("/blocks/:id", (req, res) => {
     res.status(400).json({ error: "no updatable fields" });
     return;
   }
+  const now = Date.now();
   fields.push("updated_at = ?");
-  values.push(Date.now(), id);
+  values.push(now, id);
 
   db.prepare(`UPDATE block SET ${fields.join(", ")} WHERE id = ?`).run(
     ...values
   );
   const row = db.prepare("SELECT * FROM block WHERE id = ?").get(id) as BlockRow;
+  touchPage(row.page_id, now);
   res.json({ ...row, content: JSON.parse(row.content) });
 });
 
 // 블록 삭제
 blocks.delete("/blocks/:id", (req, res) => {
+  const row = db
+    .prepare("SELECT page_id FROM block WHERE id = ?")
+    .get(req.params.id) as { page_id: string } | undefined;
   db.prepare("DELETE FROM block WHERE id = ?").run(req.params.id);
+  if (row) touchPage(row.page_id, Date.now());
   res.status(204).end();
 });
 

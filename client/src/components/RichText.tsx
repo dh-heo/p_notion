@@ -8,6 +8,7 @@ import DOMPurify from 'dompurify'
 import type { BlockContent, BlockType, Page } from '../types'
 import { useStore } from '../store'
 import { parseClipboardGrid } from '../tableClipboard'
+import { inlineMarkdown, looksLikeMarkdown, markdownToBlocks } from '../markdown'
 import { MentionMenu } from './MentionMenu'
 import { isImageIcon } from './PageIcon'
 import { SlashMenu, filterSlashChoices } from './SlashMenu'
@@ -578,6 +579,24 @@ export function RichText({
           } catch {
             /* 파싱 실패 시 기본 붙여넣기로 폴백 */
           }
+        }
+      }
+      // ChatGPT 등에서 복사한 마크다운 텍스트를 블록으로 변환
+      const text = e.clipboardData.getData('text/plain')
+      if (text && looksLikeMarkdown(text)) {
+        if (text.includes('\n')) {
+          const items = markdownToBlocks(text)
+          if (items.length) {
+            e.preventDefault()
+            onPasteBlocks(items)
+            return
+          }
+        } else {
+          // 한 줄이면 캐럿 위치에 인라인 서식만 적용
+          e.preventDefault()
+          document.execCommand('insertHTML', false, inlineMarkdown(text))
+          if (ref.current) onInput(clean(ref.current.innerHTML))
+          return
         }
       }
     }

@@ -20,6 +20,8 @@ export function Editor() {
   )
   const renamePage = useStore((s) => s.renamePage)
   const setPageIcon = useStore((s) => s.setPageIcon)
+  const setFocus = useStore((s) => s.setFocus)
+  const blocks = useStore((s) => s.blocks)
   const backlinks = useStore((s) => s.backlinks)
   const selectPage = useStore((s) => s.selectPage)
   const addBlockAtEnd = useStore((s) => s.addBlockAtEnd)
@@ -141,6 +143,13 @@ export function Editor() {
           value={page.title}
           readOnly={locked}
           onChange={(e) => renamePage(page.id, e.target.value)}
+          onKeyDown={(e) => {
+            // 제목에서 Enter → 본문 첫 블록으로 커서 이동
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              if (blocks.length) setFocus(blocks[0].id, true)
+            }
+          }}
         />
         <BlockList key={currentPageId} />
         {backlinks.length > 0 && (

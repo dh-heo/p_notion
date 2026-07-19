@@ -25,6 +25,7 @@ export interface Page {
   title: string
   icon: string | null
   cover: string | null
+  color: string | null
   sort_order: number
   created_at: number
   updated_at: number

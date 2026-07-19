@@ -68,6 +68,8 @@ function ensureColumn(table: string, column: string, def: string) {
 ensureColumn("page", "deleted_at", "INTEGER");
 // 페이지 커버 이미지 URL (NULL = 없음). icon 컬럼은 최초 스키마에 이미 존재
 ensureColumn("page", "cover", "TEXT");
+// 사이드바 색상 플래그 (NULL = 없음). 제목 왼쪽에 표시할 색상 값
+ensureColumn("page", "color", "TEXT");
 
 // 단일 사용자: workspace 1개를 보장한다.
 const existing = db
