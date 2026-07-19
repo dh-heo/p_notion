@@ -1,17 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Plus,
-  ArrowUp,
-  ArrowDown,
-  ArrowRightToLine,
-  Filter,
-  GripVertical,
-  Hash,
-  Type as TypeIcon,
-  Tag,
   Trash2,
   X,
-  ChevronDown,
   ArrowUpToLine,
   Download,
   EyeOff,
@@ -30,103 +21,28 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
   arrayMove,
-  useSortable,
 } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { clean, handleEditableLinkClick, mentionContext } from '../RichText'
-import { MentionMenu } from '../MentionMenu'
-import { useStore } from '../../store'
 import {
   escapeHtml,
-  parseClipboardGrid,
   gridToTSV,
   gridToCSV,
   gridToHtmlTable,
 } from '../../tableClipboard'
-import type { Page, TableColumn, TableContent, TableOption } from '../../types'
+import type { TableColumn, TableContent, TableOption } from '../../types'
 import { uid } from '../../uid'
-import type { ReactNode, MouseEvent as ReactMouseEvent, ClipboardEvent as ReactClipboardEvent } from 'react'
-
-// 범주 칩 팔레트 (따뜻한 톤, InlineToolbar 하이라이트 색과 결)
-const CHIP_COLORS = [
-  { bg: '#f6e7b0', text: '#6b5a16' }, // 노랑
-  { bg: '#f3d4d1', text: '#8a3a32' }, // 분홍
-  { bg: '#d6e4cf', text: '#3f5536' }, // 초록
-  { bg: '#d3e0ec', text: '#33506b' }, // 파랑
-  { bg: '#f0ddc9', text: '#7a4f2b' }, // 주황
-  { bg: '#e3d4ea', text: '#574569' }, // 보라
-  { bg: '#e6e1d6', text: '#5a5448' }, // 회색
-]
-const chip = (i: number) => CHIP_COLORS[i % CHIP_COLORS.length]
-
-// 셀 배경 팔레트 (칩보다 은은한 톤). 행/열 배경색 인덱스가 여기를 가리킨다.
-const BG_COLORS = [
-  '#fdf8e6', // 노랑
-  '#fbeeeb', // 분홍
-  '#f0f6ec', // 초록
-  '#eef4f9', // 파랑
-  '#fbf1e7', // 주황
-  '#f5eef9', // 보라
-  '#f3f0ea', // 회색
-]
-const bgColor = (i: number) => BG_COLORS[i % BG_COLORS.length]
-
-function stripHtml(html: string): string {
-  const d = document.createElement('div')
-  d.innerHTML = html
-  return (d.textContent ?? '').trim()
-}
-
-// 텍스트 필터의 한 term을 검사 (text/term 모두 소문자 가정)
-// ^ = 시작, $ = 끝, ^…$ = 정확히 일치, 그 외 = 포함
-function matchTerm(text: string, term: string): boolean {
-  const starts = term.startsWith('^')
-  const ends = term.endsWith('$')
-  const core = term.slice(starts ? 1 : 0, ends ? term.length - 1 : term.length)
-  if (starts && ends) return text === core
-  if (starts) return text.startsWith(core)
-  if (ends) return text.endsWith(core)
-  return text.includes(core)
-}
-
-// comma 켜진 text 열의 표시용 HTML. 셀이 순수한 숫자일 때만 1000단위 쉼표를 넣고,
-// 숫자가 아니면(문자 포함) 원본 HTML을 그대로 둔다.
-function formatNumberHtml(html: string): string {
-  const raw = stripHtml(html).replace(/,/g, '')
-  if (!/^-?\d+(\.\d+)?$/.test(raw)) return html
-  const neg = raw.startsWith('-')
-  const [int, dec] = raw.replace('-', '').split('.')
-  const withSep = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  return escapeHtml((neg ? '-' : '') + withSep + (dec != null ? '.' + dec : ''))
-}
-
-// contentEditable 셀의 caret이 맨 앞/맨 뒤에 있는지 (화살표 셀 이동 경계 판정)
-function caretAtEdge(el: HTMLElement, atStart: boolean): boolean {
-  const sel = window.getSelection()
-  if (!sel || !sel.isCollapsed || sel.rangeCount === 0) return false
-  const range = sel.getRangeAt(0).cloneRange()
-  range.selectNodeContents(el)
-  if (atStart) range.setEnd(sel.anchorNode!, sel.anchorOffset)
-  else range.setStart(sel.anchorNode!, sel.anchorOffset)
-  return range.toString().length === 0
-}
-
-// 셀에 포커스를 주고 caret을 맨 앞/맨 뒤로 보낸다
-function focusCellEl(el: HTMLElement, atStart: boolean) {
-  el.focus()
-  if (!el.isContentEditable) return
-  const range = document.createRange()
-  range.selectNodeContents(el)
-  range.collapse(atStart)
-  const sel = window.getSelection()
-  sel?.removeAllRanges()
-  sel?.addRange(range)
-}
-
-type SortState = { colId: string; dir: 'asc' | 'desc' } | null
-// 열 id -> select: 허용 옵션 id 배열 / text: 포함 문자열
-type FilterState = Record<string, string[] | string>
-
+import type { MouseEvent as ReactMouseEvent, ClipboardEvent as ReactClipboardEvent } from 'react'
+import {
+  chip,
+  bgColor,
+  stripHtml,
+  matchTerm,
+  focusCellEl,
+} from './table/tableShared'
+import type { SortState, FilterState } from './table/tableShared'
+import { TextCell } from './table/TextCell'
+import { ColorSwatches } from './table/ColorSwatches'
+import { HeaderCell } from './table/HeaderCell'
+import { ColumnMenu } from './table/ColumnMenu'
 interface Props {
   content: TableContent
   onChange: (next: TableContent) => void
@@ -267,6 +183,8 @@ export function TableBlock({ content, onChange, editable }: Props) {
   }
 
   // ----- 영역 선택 & 복사/내보내기 -----
+  // 헤더 행을 선택 좌표에 편입 (본문 행은 0.., 헤더 행은 -1)
+  const HEADER_ROW = -1
   const selBox = sel && {
     r1: Math.min(sel.a.r, sel.b.r),
     r2: Math.max(sel.a.r, sel.b.r),
@@ -298,16 +216,28 @@ export function TableBlock({ content, onChange, editable }: Props) {
       : cells[r]?.[c] ?? ''
 
   // 선택 영역을 엑셀 붙여넣기용으로 클립보드에 기록 (TSV + HTML 표)
+  // 선택이 헤더 행(-1)까지 걸치면 열 이름 행을 맨 위에 함께 넣는다.
   const handleCopy = (e: ReactClipboardEvent) => {
     if (!multiSel || !selBox) return
     e.preventDefault()
-    const rowsView = viewRows.slice(selBox.r1, selBox.r2 + 1)
+    const rowsRange = Array.from(
+      { length: selBox.r2 - selBox.r1 + 1 },
+      (_, i) => selBox.r1 + i
+    )
     const colIdx = Array.from(
       { length: selBox.c2 - selBox.c1 + 1 },
       (_, i) => selBox.c1 + i
+    ).filter((c) => !columns[c].hidden) // 숨긴 열은 복사에서 제외 (exportCSV와 동일)
+    const plain = rowsRange.map((vr) =>
+      colIdx.map((c) =>
+        vr === HEADER_ROW ? columns[c].name : cellText(viewRows[vr], columns[c], c)
+      )
     )
-    const plain = rowsView.map((orig) => colIdx.map((c) => cellText(orig, columns[c], c)))
-    const html = rowsView.map((orig) => colIdx.map((c) => cellHtml(orig, columns[c], c)))
+    const html = rowsRange.map((vr) =>
+      colIdx.map((c) =>
+        vr === HEADER_ROW ? escapeHtml(columns[c].name) : cellHtml(viewRows[vr], columns[c], c)
+      )
+    )
     e.clipboardData.setData('text/plain', gridToTSV(plain))
     e.clipboardData.setData('text/html', gridToHtmlTable(html))
   }
@@ -715,11 +645,14 @@ export function TableBlock({ content, onChange, editable }: Props) {
                       sortDir={sorted}
                       filtered={filtered}
                       hiddenBefore={gap.map(({ col: h, c: hc }) => h.name || `열 ${hc + 1}`)}
+                      selected={isSelected(HEADER_ROW, c)}
                       onShowGap={() => showCols(gap.map(({ c: hc }) => hc))}
                       onToggleMenu={() =>
                         setMenuCol((m) => (m === col.id ? null : col.id))
                       }
                       onRename={(name) => renameCol(c, name)}
+                      onSelDown={(e) => onCellDown(HEADER_ROW, c, e)}
+                      onSelEnter={(e) => onCellEnter(HEADER_ROW, c, e)}
                       menu={
                         menuCol === col.id ? (
                           <ColumnMenu
@@ -959,421 +892,6 @@ export function TableBlock({ content, onChange, editable }: Props) {
             )}
           </div>
         )}
-      </div>
-    </div>
-  )
-}
-
-// 텍스트 셀: 편집(포커스) 중에는 prop -> DOM 반영을 막아 입력이 지워지지 않게 한다
-// (마우스로 다른 셀을 누르면 선택 상태가 바뀌며 리렌더되는데, 그때 caret/내용이 날아가던 버그 수정)
-function TextCell({
-  html,
-  editable,
-  comma,
-  cellKey,
-  onCommit,
-  onPasteGrid,
-  onNav,
-}: {
-  html: string
-  editable: boolean
-  comma: boolean
-  cellKey: string
-  onCommit: (html: string) => void
-  onPasteGrid: (grid: string[][]) => void
-  onNav: (dir: 'left' | 'right' | 'up' | 'down', atStart: boolean) => void
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const pages = useStore((s) => s.pages)
-  // '[[' 페이지 멘션 자동완성 (RichText와 동일하게 동작 — 셀도 텍스트 HTML을 저장하므로 앵커가 보존된다)
-  const [mention, setMention] = useState<{ query: string; rect: DOMRect } | null>(null)
-  const [mentionIdx, setMentionIdx] = useState(0)
-  const mq = mention?.query.toLowerCase() ?? ''
-  const cands = mention
-    ? pages
-        .filter((p) => (p.title || '제목 없음').toLowerCase().includes(mq))
-        .slice(0, 8)
-    : []
-  // 포커스 중이 아니면 표시값(comma 열이면 숫자에 쉼표)을 DOM에 반영
-  useEffect(() => {
-    const el = ref.current
-    if (!el || document.activeElement === el) return
-    const display = comma ? formatNumberHtml(html) : html
-    if (el.innerHTML !== display) el.innerHTML = display
-  }, [html, comma])
-
-  // '[[질의'를 감지해 멘션 메뉴를 열고 닫는다
-  const refreshMention = () => {
-    const el = ref.current
-    if (!el) return
-    const ctx = mentionContext()
-    if (ctx) {
-      const sel = window.getSelection()
-      const rect =
-        sel && sel.rangeCount > 0
-          ? sel.getRangeAt(0).getBoundingClientRect()
-          : el.getBoundingClientRect()
-      setMention({ query: ctx.query, rect })
-      setMentionIdx(0)
-    } else if (mention) {
-      setMention(null)
-    }
-  }
-
-  // '[[질의'를 선택한 페이지 멘션 앵커로 치환하고 셀 내용을 저장한다
-  const pickMention = (page: Page) => {
-    const el = ref.current
-    const ctx = mentionContext()
-    if (!el || !ctx) return
-    const range = document.createRange()
-    range.setStart(ctx.node, ctx.start)
-    range.setEnd(ctx.node, ctx.offset)
-    range.deleteContents()
-    const a = document.createElement('a')
-    a.setAttribute('data-page-id', page.id)
-    a.textContent = (page.icon ? page.icon + ' ' : '') + (page.title || '제목 없음')
-    range.insertNode(a)
-    const space = document.createTextNode(' ')
-    a.after(space)
-    const after = document.createRange()
-    after.setStartAfter(space)
-    after.collapse(true)
-    const sel = window.getSelection()
-    sel?.removeAllRanges()
-    sel?.addRange(after)
-    setMention(null)
-    onCommit(clean(el.innerHTML))
-  }
-
-  return (
-    <>
-    <div
-      ref={ref}
-      className="b-table-cell"
-      data-cell={cellKey}
-      contentEditable={editable}
-      suppressContentEditableWarning
-      onClick={handleEditableLinkClick}
-      onInput={refreshMention}
-      onFocus={() => {
-        // 편집 시작 시 쉼표 표시 대신 원본을 보여준다 (caret은 끝으로)
-        const el = ref.current
-        if (el && comma && el.innerHTML !== html) {
-          el.innerHTML = html
-          focusCellEl(el, false)
-        }
-      }}
-      onKeyDown={(e) => {
-        const el = ref.current
-        if (!el) return
-        // IME 조합 중의 키다운(특히 Enter)은 조합 확정용이므로 무시 (멘션 이중 처리 방지)
-        if (e.nativeEvent.isComposing || e.keyCode === 229) return
-        // 멘션 메뉴가 열려 있으면 방향키/Enter/Esc를 메뉴 조작에 사용
-        if (mention) {
-          if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            setMentionIdx((i) => (cands.length ? (i + 1) % cands.length : 0))
-            return
-          }
-          if (e.key === 'ArrowUp') {
-            e.preventDefault()
-            setMentionIdx((i) =>
-              cands.length ? (i - 1 + cands.length) % cands.length : 0
-            )
-            return
-          }
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            if (cands[mentionIdx]) pickMention(cands[mentionIdx])
-            return
-          }
-          if (e.key === 'Escape') {
-            e.preventDefault()
-            setMention(null)
-            return
-          }
-        }
-        if (e.key === 'ArrowLeft' && caretAtEdge(el, true)) {
-          e.preventDefault()
-          onNav('left', false)
-        } else if (e.key === 'ArrowRight' && caretAtEdge(el, false)) {
-          e.preventDefault()
-          onNav('right', true)
-        } else if (e.key === 'ArrowUp' && caretAtEdge(el, true)) {
-          e.preventDefault()
-          onNav('up', false)
-        } else if (e.key === 'ArrowDown' && caretAtEdge(el, false)) {
-          e.preventDefault()
-          onNav('down', true)
-        }
-      }}
-      onPaste={(e) => {
-        const grid = parseClipboardGrid(e.clipboardData)
-        if (grid) {
-          e.preventDefault()
-          onPasteGrid(grid)
-        }
-      }}
-      onBlur={(e) => {
-        const el = e.currentTarget
-        // 메뉴 항목 클릭은 mousedown+preventDefault라 blur가 나지 않지만, 셀을 떠나면 닫는다
-        if (mention) setMention(null)
-        onCommit(clean(el.innerHTML))
-        // 편집 안 하고 빠져나오면 리렌더가 없을 수 있어, 표시 서식을 직접 되돌린다
-        if (comma) {
-          const display = formatNumberHtml(el.innerHTML)
-          if (el.innerHTML !== display) el.innerHTML = display
-        }
-      }}
-    />
-    {mention && (
-      <MentionMenu
-        rect={mention.rect}
-        cands={cands}
-        active={mentionIdx}
-        onHover={setMentionIdx}
-        onPick={pickMention}
-      />
-    )}
-    </>
-  )
-}
-
-// 행/열 배경색 선택 팔레트 ("없음" + 색상 스와치)
-function ColorSwatches({
-  value,
-  onPick,
-}: {
-  value: number | null
-  onPick: (i: number | null) => void
-}) {
-  return (
-    <div className="b-bg-swatches">
-      <button
-        className={`b-bg-swatch b-bg-none${value == null ? ' active' : ''}`}
-        title="없음"
-        onClick={() => onPick(null)}
-      />
-      {BG_COLORS.map((bg, i) => (
-        <button
-          key={i}
-          className={`b-bg-swatch${value === i ? ' active' : ''}`}
-          style={{ background: bg }}
-          onClick={() => onPick(i)}
-        />
-      ))}
-    </div>
-  )
-}
-
-// 헤더 셀: 드래그 핸들(grip)로만 열 순서를 바꾼다 (이름 입력/메뉴 클릭과 충돌하지 않게)
-function HeaderCell({
-  col,
-  c,
-  editable,
-  sortDir,
-  filtered,
-  hiddenBefore,
-  onShowGap,
-  onToggleMenu,
-  onRename,
-  menu,
-}: {
-  col: TableColumn
-  c: number
-  editable: boolean
-  sortDir: 'asc' | 'desc' | null
-  filtered: boolean
-  // 이 열 바로 앞에 숨겨진 열들의 이름 (없으면 빈 배열)
-  hiddenBefore: string[]
-  onShowGap: () => void
-  onToggleMenu: () => void
-  onRename: (name: string) => void
-  menu: ReactNode
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: col.id })
-  return (
-    <th
-      ref={setNodeRef}
-      className={`b-th${isDragging ? ' dragging' : ''}`}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-    >
-      {editable && hiddenBefore.length > 0 && (
-        <button
-          className="b-th-gap"
-          title={`숨긴 열 ${hiddenBefore.length}개: ${hiddenBefore.join(', ')} — 클릭하여 펼치기`}
-          onClick={onShowGap}
-        >
-          <EyeOff size={11} />
-          {hiddenBefore.length > 1 && <span>{hiddenBefore.length}</span>}
-        </button>
-      )}
-      <div className="b-th-inner">
-        {editable && (
-          <button className="b-th-drag" title="열 이동" {...attributes} {...listeners}>
-            <GripVertical size={12} />
-          </button>
-        )}
-        <input
-          className="b-th-name"
-          value={col.name}
-          placeholder={`열 ${c + 1}`}
-          readOnly={!editable}
-          onChange={(e) => onRename(e.target.value)}
-        />
-        {col.type === 'select' && <Tag size={12} className="b-th-typeicon" />}
-        {sortDir && (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
-        {filtered && <Filter size={12} className="b-th-filtered" />}
-        {editable && (
-          <button className="b-th-menu" title="열 옵션" onClick={onToggleMenu}>
-            <ChevronDown size={13} />
-          </button>
-        )}
-      </div>
-      {menu}
-    </th>
-  )
-}
-
-interface MenuProps {
-  col: TableColumn
-  sortDir: 'asc' | 'desc' | null
-  filter: string[] | string | undefined
-  canDelete: boolean
-  canHide: boolean
-  onSort: (dir: 'asc' | 'desc' | null) => void
-  onTextFilter: (q: string) => void
-  onToggleOpt: (optId: string) => void
-  onConvert: (to: 'text' | 'select') => void
-  onDeleteOption: (optId: string) => void
-  onInsertColAfter: () => void
-  onToggleComma: () => void
-  onSetBg: (bg: number | null) => void
-  onHideCol: () => void
-  onDeleteCol: () => void
-}
-
-function ColumnMenu({
-  col,
-  sortDir,
-  filter,
-  canDelete,
-  canHide,
-  onSort,
-  onTextFilter,
-  onToggleOpt,
-  onConvert,
-  onDeleteOption,
-  onInsertColAfter,
-  onToggleComma,
-  onSetBg,
-  onHideCol,
-  onDeleteCol,
-}: MenuProps) {
-  const allIds = ['', ...(col.options ?? []).map((o) => o.id)]
-  const allowed = (filter as string[]) ?? allIds
-  return (
-    <div className="b-col-pop" onMouseDown={(e) => e.stopPropagation()}>
-      <div className="b-pop-section">
-        <button
-          className={`b-pop-item${sortDir === 'asc' ? ' active' : ''}`}
-          onClick={() => onSort(sortDir === 'asc' ? null : 'asc')}
-        >
-          <ArrowUp size={14} /> 오름차순
-        </button>
-        <button
-          className={`b-pop-item${sortDir === 'desc' ? ' active' : ''}`}
-          onClick={() => onSort(sortDir === 'desc' ? null : 'desc')}
-        >
-          <ArrowDown size={14} /> 내림차순
-        </button>
-        <button className="b-pop-item" onClick={onInsertColAfter}>
-          <ArrowRightToLine size={14} /> 오른쪽에 열 추가
-        </button>
-        {canHide && (
-          <button className="b-pop-item" onClick={onHideCol}>
-            <EyeOff size={14} /> 열 숨기기
-          </button>
-        )}
-        {canDelete && (
-          <button className="b-pop-item danger" onClick={onDeleteCol}>
-            <Trash2 size={14} /> 열 삭제
-          </button>
-        )}
-      </div>
-
-      <div className="b-pop-section">
-        <div className="b-pop-label">
-          <Palette size={12} /> 배경색
-        </div>
-        <ColorSwatches value={col.bg ?? null} onPick={onSetBg} />
-      </div>
-
-      <div className="b-pop-section">
-        <div className="b-pop-label">
-          <Filter size={12} /> 필터
-        </div>
-        {col.type === 'select' ? (
-          <div className="b-pop-checks">
-            <label className="b-pop-check">
-              <input
-                type="checkbox"
-                checked={allowed.includes('')}
-                onChange={() => onToggleOpt('')}
-              />
-              <span className="b-cell-empty">(없음)</span>
-            </label>
-            {(col.options ?? []).map((o) => {
-              const cc = chip(o.color)
-              return (
-                <label key={o.id} className="b-pop-check">
-                  <input
-                    type="checkbox"
-                    checked={allowed.includes(o.id)}
-                    onChange={() => onToggleOpt(o.id)}
-                  />
-                  <span className="b-chip" style={{ background: cc.bg, color: cc.text }}>
-                    {o.label}
-                  </span>
-                  <button
-                    className="b-opt-del"
-                    title="옵션 삭제"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => onDeleteOption(o.id)}
-                  >
-                    <X size={12} />
-                  </button>
-                </label>
-              )
-            })}
-          </div>
-        ) : (
-          <input
-            className="b-pop-filter"
-            placeholder="포함할 텍스트"
-            value={(filter as string) ?? ''}
-            onChange={(e) => onTextFilter(e.target.value)}
-          />
-        )}
-      </div>
-
-      <div className="b-pop-section">
-        {col.type !== 'select' && (
-          <button
-            className={`b-pop-item${col.comma ? ' active' : ''}`}
-            onClick={onToggleComma}
-          >
-            <Hash size={14} /> 천 단위 쉼표
-          </button>
-        )}
-        <button
-          className="b-pop-item"
-          onClick={() => onConvert(col.type === 'select' ? 'text' : 'select')}
-        >
-          {col.type === 'select' ? <TypeIcon size={14} /> : <Tag size={14} />}
-          {col.type === 'select' ? '텍스트 열로' : '범주 열로'}
-        </button>
       </div>
     </div>
   )

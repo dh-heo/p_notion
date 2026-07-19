@@ -1,0 +1,211 @@
+/* ===== Editor ===== */
+.editor {
+  position: relative;
+  max-width: var(--reading-width);
+  margin: 0 auto;
+  padding: 72px 56px 240px;
+}
+.editor.file-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -8px;
+  border-radius: var(--radius-lg);
+}
+.editor-drop-overlay {
+  position: absolute;
+  inset: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(185, 96, 58, 0.06);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  z-index: 5;
+}
+.editor.empty {
+  color: var(--text-faint);
+  padding-top: 120px;
+  text-align: center;
+}
+
+.editor-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.page-meta-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  color: var(--text-soft);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.page-meta-add:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* 페이지 아이콘 (이모지) */
+/* 사이드바/백링크/멘션에 쓰는 이미지 아이콘 (PageIcon) */
+.page-icon-img {
+  object-fit: cover;
+  border-radius: var(--radius);
+  display: block;
+}
+
+/* 이모지 선택 팝오버 */
+.emoji-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+}
+.emoji-pop {
+  position: absolute;
+  z-index: 30;
+  top: 100px;
+  left: 56px;
+  width: 280px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  padding: 8px;
+}
+.icon-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.icon-tabs button {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-soft);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  padding: 5px;
+  cursor: pointer;
+}
+.icon-tabs button:hover {
+  background: var(--bg-hover);
+}
+.icon-tabs button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.icon-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 12px;
+}
+.icon-upload-btn {
+  font-size: 13px;
+  color: var(--text-soft);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.icon-upload-btn:hover:not(:disabled) {
+  color: var(--accent);
+}
+.icon-upload-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.icon-upload-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.emoji-cell {
+  font-size: 20px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius);
+}
+.emoji-cell:hover {
+  background: var(--bg-hover);
+}
+.emoji-remove {
+  margin-top: 6px;
+  width: 100%;
+  font-size: 12px;
+  color: var(--text-soft);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  cursor: pointer;
+}
+.emoji-remove:hover {
+  color: var(--accent);
+}
+.tree-emoji {
+  font-size: 14px;
+  width: 15px;
+  text-align: center;
+  flex: none;
+}
+.lock-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-soft);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.lock-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.lock-toggle.locked {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+  background: var(--accent-soft);
+}
+
+.page-title {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-bottom: 18px;
+  padding: 0;
+}
+.page-title::placeholder {
+  color: var(--text-faint);
+}
+

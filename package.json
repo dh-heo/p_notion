@@ -10,7 +10,9 @@
     "build": "npm --prefix client run build",
     "start": "NODE_ENV=production tsx server/index.ts",
     "reset": "tsx server/reset.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:unit": "tsx --test tests/*.test.ts",
+    "verify": "npm run test:unit && npm run typecheck && npm --prefix client run build"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",

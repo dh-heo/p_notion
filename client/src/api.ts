@@ -37,7 +37,7 @@ export const api = {
 
   updatePage: (
     id: string,
-    patch: Partial<Pick<Page, 'title' | 'icon' | 'cover' | 'color'>>
+    patch: Partial<Pick<Page, 'title' | 'icon' | 'color'>>
   ) =>
     req<Page>(`/api/pages/${id}`, {
       method: 'PATCH',

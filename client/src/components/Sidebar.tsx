@@ -326,15 +326,15 @@ function RecentSection() {
           className={`recent-row${currentPageId === p.id ? ' active' : ''}`}
           onClick={() => selectPage(p.id)}
         >
-          {p.color && (
-            <span className="tree-flag" style={{ background: p.color }} />
-          )}
           {p.icon ? (
             <span className="tree-icon tree-emoji">
               <PageIcon icon={p.icon} size={14} />
             </span>
           ) : (
             <FileText size={14} className="tree-icon" />
+          )}
+          {p.color && (
+            <span className="tree-flag" style={{ background: p.color }} />
           )}
           <span className="tree-title">{p.title || '제목 없음'}</span>
         </div>

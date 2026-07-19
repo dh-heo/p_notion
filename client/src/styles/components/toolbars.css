@@ -1,0 +1,153 @@
+/* ===== Slash menu ===== */
+.slash-menu {
+  position: fixed;
+  z-index: 50;
+  width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  outline: none;
+}
+.slash-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  text-align: left;
+  color: var(--text);
+}
+.slash-item.active {
+  background: var(--bg-hover);
+}
+.slash-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: var(--text-soft);
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.slash-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.slash-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+.slash-hint {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* ===== Inline toolbar ===== */
+.inline-toolbar {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+.inline-toolbar button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  border-radius: 4px;
+}
+.inline-toolbar button:hover,
+.inline-toolbar button.active {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-strong);
+  margin: 0 3px;
+  align-self: center;
+}
+
+/* 여러 행 선택 시 뜨는 불릿/번호 변환 툴바 */
+.block-select-toolbar {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+.block-select-toolbar button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 9px;
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  border-radius: 4px;
+  font-size: 13px;
+}
+.block-select-toolbar button:hover,
+.block-select-toolbar button.active {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.block-select-sep {
+  width: 1px;
+  margin: 2px 3px;
+  background: var(--border);
+}
+.block-select-swatches {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+.block-select-swatches .color-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.block-select-swatches .color-swatch.bg {
+  color: var(--text);
+}
+

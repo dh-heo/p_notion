@@ -1,0 +1,458 @@
+/* ===== Table ===== */
+.b-table-wrap {
+  margin: 4px 0;
+  overflow-x: auto;
+}
+.b-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.b-table td {
+  border: 1px solid var(--border-strong);
+  padding: 0;
+  min-width: 80px;
+  vertical-align: top;
+}
+.b-table-cell {
+  outline: none;
+  padding: 7px 10px;
+  min-height: 1.6em;
+  font-size: 15px;
+}
+.b-table-cell:focus {
+  background: var(--bg-elevated);
+}
+.b-table-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.b-table-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--text-soft);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px 8px;
+}
+.b-table-actions button:hover {
+  background: var(--bg-hover);
+}
+
+/* 행 추가/삭제 거터 (hover 시 노출) */
+.b-row-gutter-th,
+.b-row-gutter {
+  border: none;
+  background: transparent;
+  min-width: 0;
+  width: 44px;
+  padding: 0 2px;
+  text-align: center;
+  vertical-align: middle;
+}
+.b-row-tools {
+  position: relative;
+  display: inline-flex;
+  gap: 1px;
+}
+.b-row-add,
+.b-row-del,
+.b-row-color {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 4px;
+  padding: 3px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.b-table tbody tr:hover .b-row-add,
+.b-table tbody tr:hover .b-row-del,
+.b-table tbody tr:hover .b-row-color {
+  opacity: 1;
+}
+.b-row-add:hover,
+.b-row-color:hover {
+  background: var(--bg-hover);
+  color: var(--text-soft);
+}
+.b-row-del:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.b-row-del:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+/* 행 배경색 팝오버 (거터 기준 상대 위치) */
+.b-row-color-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  margin-top: 2px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  padding: 4px;
+}
+/* 배경색 스와치 (행 팝오버 · 열 메뉴 공용) */
+.b-bg-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 6px;
+  max-width: 148px;
+}
+.b-bg-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.b-bg-swatch.active {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.b-bg-none {
+  position: relative;
+  background: var(--bg-elevated);
+}
+.b-bg-none::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 50%;
+  height: 1px;
+  background: var(--accent);
+  transform: rotate(-45deg);
+}
+.b-table-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.b-table-actions button:disabled:hover {
+  background: transparent;
+}
+
+/* 영역 선택 (드래그) */
+.b-table-wrap:focus {
+  outline: none;
+}
+.b-cell-selected {
+  background: var(--accent-soft);
+}
+/* 헤더 셀이 영역 선택에 포함됐을 때 (본문 선택과 같은 톤) */
+.b-th.selected {
+  background: var(--accent-soft);
+}
+.b-table-selecting .b-table-cell,
+.b-table-selecting .b-table td {
+  user-select: none;
+}
+
+/* 테이블 헤더 */
+.b-table th {
+  border: 1px solid var(--border-strong);
+  background: var(--bg-sidebar);
+  padding: 0;
+  min-width: 80px;
+  position: relative;
+  vertical-align: top;
+}
+.b-th-inner {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 6px;
+  color: var(--text-soft);
+}
+/* 열 사이에 숨긴 열이 있음을 알리는 마커 (헤더 왼쪽 경계에 겹쳐 배치) */
+.b-th-gap {
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 16px;
+  padding: 0 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+.b-th-gap:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.b-th-name {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.b-th-typeicon,
+.b-th-filtered {
+  color: var(--accent);
+  flex: none;
+}
+.b-th-menu {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 4px;
+  padding: 2px;
+  cursor: pointer;
+}
+.b-th-menu:hover {
+  background: var(--bg-hover);
+  color: var(--text-soft);
+}
+.b-th-drag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 4px;
+  padding: 2px 0;
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+}
+.b-th:hover .b-th-drag {
+  opacity: 1;
+}
+.b-th-drag:active {
+  cursor: grabbing;
+}
+.b-th.dragging {
+  opacity: 0.5;
+}
+
+/* 범주 칩 */
+.b-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.b-cell-select-wrap {
+  position: relative;
+}
+.b-cell-select {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 6px 10px;
+  min-height: 1.6em;
+  cursor: pointer;
+}
+.b-cell-select:disabled {
+  cursor: default;
+}
+.b-cell-select:focus {
+  outline: none;
+  background: var(--bg-elevated);
+}
+.b-cell-empty {
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* 팝오버 공통 */
+.b-pop-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.b-col-pop,
+.b-select-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  margin-top: 2px;
+  min-width: 200px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  padding: 6px;
+  text-align: left;
+}
+/* 하단 "숨긴 열" 팝오버 — 표 아래쪽이라 위로 펼친다 */
+.b-hidden-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.b-hidden-pop {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 50;
+  margin-bottom: 2px;
+  min-width: 160px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  padding: 6px;
+  text-align: left;
+}
+.b-pop-section {
+  padding: 4px 2px;
+}
+.b-pop-section + .b-pop-section {
+  border-top: 1px solid var(--border);
+}
+.b-pop-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-faint);
+  padding: 2px 6px;
+}
+.b-pop-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.b-pop-item:hover {
+  background: var(--bg-hover);
+}
+.b-pop-item.active {
+  color: var(--accent);
+}
+.b-pop-showall {
+  margin-top: 2px;
+  border-top: 1px solid var(--border);
+  color: var(--accent);
+}
+.b-pop-item.danger:hover {
+  color: var(--accent);
+}
+.b-pop-filter {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--bg);
+  outline: none;
+}
+.b-pop-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.b-pop-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* select 셀 편집 팝오버 */
+.b-opt-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.b-opt-pick {
+  flex: 1;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.b-opt-pick:hover {
+  background: var(--bg-hover);
+}
+.b-opt-del {
+  flex: none;
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 4px;
+  padding: 2px;
+  cursor: pointer;
+}
+.b-opt-del:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+.b-opt-clear {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.b-opt-clear:hover {
+  background: var(--bg-hover);
+}
+.b-opt-new {
+  width: 100%;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--bg);
+  outline: none;
+}
+

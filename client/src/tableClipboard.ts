@@ -1,11 +1,7 @@
 // 스프레드시트(엑셀/구글시트) 영역 붙여넣기 파싱.
 // 클립보드의 text/html <table> 또는 text/plain TSV를 평문 2차원 배열로 변환한다.
 
-export function escapeHtml(text: string): string {
-  const d = document.createElement('div')
-  d.textContent = text
-  return d.innerHTML
-}
+export { escapeHtml } from './escapeHtml'
 
 // 모든 행을 가장 넓은 열 수에 맞춰 빈 칸으로 패딩 (사각형 보장)
 function normalize(rows: string[][]): string[][] {

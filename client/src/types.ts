@@ -24,7 +24,6 @@ export interface Page {
   parent_page_id: string | null
   title: string
   icon: string | null
-  cover: string | null
   color: string | null
   sort_order: number
   created_at: number

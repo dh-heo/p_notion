@@ -1,4 +1,5 @@
 import { uid } from './uid'
+import { escapeHtml } from './escapeHtml'
 import type { BlockContent, BlockType } from './types'
 
 // 붙여넣은 마크다운 텍스트(주로 ChatGPT 답변)를 블록으로 변환한다.
@@ -7,10 +8,6 @@ import type { BlockContent, BlockType } from './types'
 export interface MdBlock {
   type: BlockType
   content: BlockContent
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 // 인라인 마크다운을 SANITIZE 허용 태그(strong/em/code/a)로 변환.

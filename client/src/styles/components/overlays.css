@@ -1,0 +1,336 @@
+/* 페이지 멘션 링크 */
+a[data-page-id] {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-soft);
+  cursor: pointer;
+  padding: 0 1px;
+}
+a[data-page-id]:hover {
+  background: var(--accent-soft);
+  border-radius: 3px;
+}
+
+/* 멘션 자동완성 메뉴 */
+.mention-menu {
+  position: fixed;
+  z-index: 40;
+  width: 240px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  padding: 4px;
+}
+.mention-empty {
+  padding: 10px 12px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.mention-item.active {
+  background: var(--bg-hover);
+}
+.mention-item-icon {
+  flex: none;
+  width: 16px;
+  text-align: center;
+  font-size: 14px;
+}
+.mention-item-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* 백링크 섹션 */
+.backlinks {
+  margin-top: 48px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.backlinks-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+.backlink-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.backlink-item:hover {
+  background: var(--bg-hover);
+}
+.backlink-icon {
+  flex: none;
+  margin-top: 1px;
+  width: 16px;
+  text-align: center;
+  font-size: 14px;
+}
+.backlink-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.backlink-title {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+.backlink-snippet {
+  color: var(--text-soft);
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 검색 모달 */
+.search-modal {
+  width: min(560px, calc(100vw - 32px));
+  align-self: flex-start;
+  margin-top: 12vh;
+}
+.search-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.search-icon {
+  color: var(--text-faint);
+  flex: none;
+}
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+}
+.search-input::placeholder {
+  color: var(--text-faint);
+}
+.search-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+}
+.search-empty {
+  padding: 22px 14px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+.search-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.search-item.active {
+  background: var(--bg-hover);
+}
+.search-item-icon {
+  flex: none;
+  margin-top: 1px;
+  width: 16px;
+  text-align: center;
+  color: var(--text-faint);
+}
+.search-item-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.search-item-title {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-item-snippet {
+  color: var(--text-soft);
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 모달 (휴지통 등) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(40, 34, 24, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.modal {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  width: min(440px, calc(100vw - 32px));
+  max-height: min(70vh, 560px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text);
+}
+.modal-close {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--radius);
+}
+.modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-soft);
+}
+.trash-empty {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 12px;
+  border-radius: var(--radius);
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.trash-empty:hover {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+.trash-empty-msg {
+  padding: 28px 14px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+.trash-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+}
+.trash-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius);
+}
+.trash-item:hover {
+  background: var(--bg-hover);
+}
+.trash-item-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 14px;
+}
+.trash-action {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: var(--radius);
+}
+.trash-action:hover {
+  background: var(--bg-active);
+  color: var(--text-soft);
+}
+.trash-action.danger:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  /* 사이드바를 슬라이드인 오버레이로 전환 */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 30;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow-pop);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  /* 좁은 화면에선 '접힘'은 의미 없음 — 오버레이(open)로만 제어하므로 숨김 해제 */
+  .sidebar.collapsed {
+    display: block;
+  }
+  .sidebar-toggle {
+    display: flex;
+  }
+  .sidebar-backdrop.open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(40, 35, 28, 0.35);
+  }
+  /* 본문 좌우 여백 축소 + 토글 버튼 자리 확보 */
+  .editor {
+    padding: 64px 20px 200px;
+  }
+}

@@ -1,0 +1,108 @@
+/* ===== Sidebar ===== */
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 14px 8px;
+  user-select: none;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 12px;
+}
+.sidebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-soft);
+  letter-spacing: 0.02em;
+}
+.sidebar-new {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-soft);
+}
+.sidebar-new:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding-right: 6px;
+  border-radius: var(--radius);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.tree-row:hover {
+  background: var(--bg-hover);
+}
+.tree-row.active {
+  background: var(--bg-active);
+  color: var(--text);
+}
+.tree-row.dragging {
+  opacity: 0.5;
+}
+.tree-chevron {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 4px;
+}
+.tree-chevron svg {
+  transition: transform 0.12s ease;
+}
+.tree-chevron.hidden {
+  visibility: hidden;
+}
+.tree-icon {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.tree-title {
+  flex: 1;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tree-actions {
+  display: none;
+  gap: 2px;
+}
+.tree-row:hover .tree-actions {
+  display: flex;
+}
+.tree-actions button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 4px;
+}
+.tree-actions button:hover {
+  background: var(--bg-active);
+  color: var(--text);
+}
+

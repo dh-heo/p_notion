@@ -25,4 +25,6 @@ server/uploads/
 
 # Claude Code (로컬 전용, 공유 안 함)
 CLAUDE.md
+# CLAUDE.md에서 분리한 상세 가이드 (architecture/deployment/gotchas) — CLAUDE.md와 동일하게 로컬 전용
+docs/
 .claude/

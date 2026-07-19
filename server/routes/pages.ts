@@ -83,7 +83,7 @@ pages.patch("/pages/:id", (req, res) => {
   const fields: string[] = [];
   const values: unknown[] = [];
 
-  for (const key of ["title", "icon", "cover", "color"] as const) {
+  for (const key of ["title", "icon", "color"] as const) {
     if (key in (req.body ?? {})) {
       fields.push(`${key} = ?`);
       values.push(req.body[key]);
